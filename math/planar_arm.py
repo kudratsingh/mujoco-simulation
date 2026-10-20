@@ -57,9 +57,9 @@ class PlanarArm:
         return abs(self.l1 - self.l2), self.l1 + self.l2
 
 
-def pose_payload(q1_deg: float, q2_deg: float) -> dict:
+def pose_payload(q1_deg: float, q2_deg: float, l1: float = 1.0, l2: float = 0.75) -> dict:
     """Browser-facing representation; convert degrees to radians at the boundary."""
-    arm = PlanarArm()
+    arm = PlanarArm(l1, l2)
     q1, q2 = math.radians(q1_deg), math.radians(q2_deg)
     positions = arm.joint_positions(q1, q2)
     transforms = arm.transform_chain(q1, q2)

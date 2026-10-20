@@ -15,6 +15,8 @@ import webbrowser
 from planar_arm import pose_payload
 
 HTML_PATH = Path(__file__).with_suffix(".html")
+ASSETS = {f"/{name}": HTML_PATH.parent / name for name in (
+    "arm_viewer.js", "arm_motion.mjs", "arm_scene.js", "arm_viewer.css")}
 
 
 class ArmHandler(BaseHTTPRequestHandler):
@@ -25,12 +27,19 @@ class ArmHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
-        self.wfile.write(content)
+        try:
+            self.wfile.write(content)
+        except (BrokenPipeError, ConnectionResetError):
+            # A newer slider position may cancel a request already being served.
+            pass
 
     def do_GET(self):
         url = urlsplit(self.path)
         if url.path == "/":
             self.send_content(200, HTML_PATH.read_bytes(), "text/html; charset=utf-8")
+        elif url.path in ASSETS:
+            content_type = "text/css" if url.path.endswith(".css") else "text/javascript"
+            self.send_content(200, ASSETS[url.path].read_bytes(), content_type + "; charset=utf-8")
         elif url.path == "/api/pose":
             try:
                 values = parse_qs(url.query, keep_blank_values=True)
@@ -43,7 +52,16 @@ class ArmHandler(BaseHTTPRequestHandler):
                     if not math.isfinite(angle) or not -180 <= angle <= 180:
                         raise ValueError(f"{key} must be between -180 and 180 degrees")
                     angles.append(angle)
-                payload = pose_payload(*angles)
+                lengths = []
+                for key, default in (("l1", "1"), ("l2", "0.75")):
+                    raw = values.get(key, [default])
+                    if len(raw) != 1:
+                        raise ValueError(f"{key} must appear once")
+                    length = float(raw[0])
+                    if not math.isfinite(length) or not 0.25 <= length <= 1.5:
+                        raise ValueError(f"{key} must be between 0.25 and 1.5 metres")
+                    lengths.append(length)
+                payload = pose_payload(*angles, *lengths)
                 self.send_content(200, json.dumps(payload, allow_nan=False).encode(),
                                   "application/json")
             except ValueError as error:

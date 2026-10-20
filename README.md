@@ -11,8 +11,10 @@ without notes.
 ## Week 2 in progress
 
 The first artifact is a two-link planar arm: tested forward kinematics and an
-interactive browser view. Move shoulder/elbow sliders to see the arm, hand
-coordinates, reachable workspace and the Week-1 transform chain update together.
+interactive browser lab. Orbit its 3D schematic or use Plan view, play joint
+sweeps, choose configurations on the joint-angle map, and compare the hand trail
+with its position history. Adjustable link lengths, frame/angle overlays and
+the live transform chain connect the geometry to the Week-1 concepts.
 
 ```bash
 .venv/bin/python math/arm_viewer.py       # opens a browser; Ctrl+C stops the server
@@ -53,6 +55,7 @@ ROS 2 work runs in Ubuntu 24.04 (Jazzy), not in this venv.
 ```bash
 .venv/bin/pip install -r requirements-dev.txt    # pytest
 .venv/bin/python -m pytest                       # headless math, MuJoCo and viewer tests
+node --test tests/js/*.mjs                       # motion helpers (Node 22+)
 .venv/bin/python -m pytest -m "not slow"         # skip anything marked slow
 ```
 
@@ -63,7 +66,9 @@ What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
 - `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
   and independent agreement with the MuJoCo two-link model.
 - `test_arm_viewer.py` - the browser viewer's localhost HTTP interface and
-  input validation; no graphical browser is needed in CI.
+  adjustable geometry and input validation; no graphical browser is needed in CI.
+- `tests/js/test_arm_motion.mjs` - prescribed motion boundaries, fixed-joint
+  sweeps, angle wrapping and configuration-space trace seams.
 - `test_model.py` - `one_joint.xml`: 1 DoF hinge, 2 ms timestep, motor with
   gear 1 and ctrlrange ±50 N·m, joint damping 0.05, gravity on.
 - `test_simulate.py` - `reset()` initial state, a free swing stays bounded
