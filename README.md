@@ -8,6 +8,21 @@ space, coordinate frames and SE(3), a closed-loop MuJoCo simulation, and ROS 2
 basics. Everything here is meant to be small, reproducible and explainable
 without notes.
 
+## Week 2 in progress
+
+The first artifact is a two-link planar arm: tested forward kinematics and an
+interactive browser view. Move shoulder/elbow sliders to see the arm, hand
+coordinates, reachable workspace and the Week-1 transform chain update together.
+
+```bash
+.venv/bin/python math/arm_viewer.py       # opens a browser; Ctrl+C stops the server
+.venv/bin/python math/planar_arm.py       # worked 30-degree / 60-degree example
+```
+
+See [the arm walkthrough](notes/planar_arm.md) for the derivation, presets and
+validation. Forward kinematics is implemented; inverse kinematics, Jacobians and
+arm control are the next steps. Use the Mac venv for this viewer.
+
 ## Week 1 tracks
 
 | day | track | artifact | status |
@@ -37,14 +52,18 @@ ROS 2 work runs in Ubuntu 24.04 (Jazzy), not in this venv.
 
 ```bash
 .venv/bin/pip install -r requirements-dev.txt    # pytest
-.venv/bin/python -m pytest                       # whole suite, well under a second
+.venv/bin/python -m pytest                       # headless math, MuJoCo and viewer tests
 .venv/bin/python -m pytest -m "not slow"         # skip anything marked slow
 ```
 
-What `tests/` covers (no rendering, no viewer; CSV logs go to a temp dir):
+What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
 
 - `test_transforms.py` - rotations and SE(3) transforms: orthonormality,
   inverses, composition, the worked world/base/camera example.
+- `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
+  and independent agreement with the MuJoCo two-link model.
+- `test_arm_viewer.py` - the browser viewer's localhost HTTP interface and
+  input validation; no graphical browser is needed in CI.
 - `test_model.py` - `one_joint.xml`: 1 DoF hinge, 2 ms timestep, motor with
   gear 1 and ctrlrange ±50 N·m, joint damping 0.05, gravity on.
 - `test_simulate.py` - `reset()` initial state, a free swing stays bounded
