@@ -82,3 +82,25 @@ def test_pose_endpoint_exposes_json_safe_jacobian_at_singularity(viewer_url):
     assert d["jacobian"] == [[0, 0], [1.75, 0.75]]
     assert d["rank"] == 1 and d["singular"]
     assert d["condition"] is None
+
+
+def test_control_endpoint_moves_toward_target_with_bounded_rates(viewer_url):
+    with urlopen(viewer_url + "/api/control?q1=30&q2=60&x=1.1&y=0.45", timeout=3) as response:
+        p = json.load(response)
+    assert p["command"]["error_norm"] < p["error_before"]
+    assert max(abs(q) for q in p["applied_joint_rates"]) <= 1.5
+    assert p["pose"]["differential"]["rank"] == 2
+
+
+@pytest.mark.parametrize("query", ["dt=-1", "dt=0.2", "gain=nan", "damping=0", "method=bad", "method=dls&method=pinv", "x=inf", "x=6"])
+def test_control_endpoint_rejects_invalid_settings(viewer_url, query):
+    with pytest.raises(HTTPError) as error:
+        urlopen(viewer_url + "/api/control?" + query, timeout=3)
+    assert error.value.code == 400
+
+
+def test_control_endpoint_reports_a_singular_trap(viewer_url):
+    with urlopen(viewer_url + "/api/control?q1=0&q2=0&x=1.25&y=0", timeout=3) as response:
+        p = json.load(response)
+    assert p["command"]["status"] == "stalled"
+    assert p["command"]["reachable"]

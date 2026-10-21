@@ -408,6 +408,14 @@ export function drawArm(svg, data, options, samples, camera, ik = null) {
       ),
     );
     arrow(svg, start, end(options.velocity.total), "var(--green)");
+    if (options.requestedVelocity) {
+      arrow(svg, start, end(options.requestedVelocity), "var(--red)", true);
+      const desired = end(options.requestedVelocity);
+      label(svg, desired[0] + 10, desired[1] + 18, "requested", {
+        fill: "var(--red)",
+        "font-size": 10,
+      });
+    }
     const tip = end(options.velocity.total);
     label(svg, tip[0] + 10, tip[1] - 10, "v · 0.20 s", {
       fill: "var(--green)",
@@ -609,7 +617,7 @@ function arrow(svg, a, b, color, dashed = false) {
   );
 }
 
-export function drawVelocity(svg, d, velocity) {
+export function drawVelocity(svg, d, velocity, requested = null) {
   const [w, h] = clear(svg);
   if (!w || !h) return;
   // Keep a stable range for all rate choices at this pose: each slider is
@@ -664,6 +672,14 @@ export function drawVelocity(svg, d, velocity) {
       opacity: 0.4,
     });
   });
+  if (requested) {
+    arrow(svg, origin, map(requested), "var(--red)", true);
+    const r = map(requested);
+    label(svg, r[0] + 8, r[1] - 10, "requested", {
+      fill: "var(--red)",
+      "font-size": 10,
+    });
+  }
   arrow(svg, origin, map(velocity.total), "var(--green)");
   const tip = map(velocity.total);
   el(svg, "circle", { cx: tip[0], cy: tip[1], r: 4, fill: "var(--green)" });
@@ -671,4 +687,70 @@ export function drawVelocity(svg, d, velocity) {
   label(svg, w / 2 + 9, 16, "vᵧ (m/s)");
   svg.querySelector("desc").textContent =
     `Selected hand velocity (${velocity.total.map((v) => v.toFixed(3)).join(", ")}) metres per second. ${d.singular ? "Singular: the velocity ellipse collapses to a line." : "Ellipse maps the unit joint-rate circle through the Jacobian."}`;
+}
+
+export function drawControlHistory(svg, samples) {
+  const [w, h] = clear(svg);
+  if (!w || !h) return;
+  const left = 45,
+    right = w - 16,
+    top = 18,
+    bottom = h - 35;
+  const duration = Math.max(1, samples.at(-1)?.time ?? 0);
+  const ymax = Math.max(0.05, ...samples.map((s) => s.error)) * 1.1;
+  const point = (s) => [
+    left + ((right - left) * s.time) / duration,
+    bottom - ((bottom - top) * s.error) / ymax,
+  ];
+  for (let i = 0; i <= 4; i++) {
+    const y = top + ((bottom - top) * i) / 4;
+    path(
+      svg,
+      [
+        [left, y],
+        [right, y],
+      ],
+      { stroke: "var(--grid)" },
+    );
+    label(svg, left - 6, y + 4, (ymax * (1 - i / 4)).toFixed(2), {
+      "text-anchor": "end",
+    });
+    const x = left + ((right - left) * i) / 4;
+    label(svg, x, bottom + 17, ((duration * i) / 4).toFixed(1), {
+      "text-anchor": "middle",
+    });
+  }
+  path(
+    svg,
+    [
+      [left, top],
+      [left, bottom],
+      [right, bottom],
+    ],
+    { stroke: "var(--muted)" },
+  );
+  const toleranceY = point({ time: 0, error: 0.01 })[1];
+  path(
+    svg,
+    [
+      [left, toleranceY],
+      [right, toleranceY],
+    ],
+    { stroke: "var(--green)", "stroke-dasharray": "4 4" },
+  );
+  label(svg, right - 4, toleranceY - 5, "0.01 m", {
+    fill: "var(--green)",
+    "text-anchor": "end",
+  });
+  path(svg, samples.map(point), { stroke: "var(--blue)", "stroke-width": 2.2 });
+  if (samples.length) {
+    const [cx, cy] = point(samples.at(-1));
+    el(svg, "circle", { cx, cy, r: 4, fill: "var(--blue)" });
+  }
+  label(svg, (left + right) / 2, h - 3, "Simulated time (s)", {
+    "text-anchor": "middle",
+  });
+  svg.querySelector("desc").textContent = samples.length
+    ? `Position error ${samples.at(-1).error.toFixed(4)} metres after ${samples.at(-1).time.toFixed(2)} simulated seconds.`
+    : "Run target tracking to record the position error.";
 }

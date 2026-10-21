@@ -9,6 +9,7 @@ import {
   drawCspace,
   drawHistory,
   drawVelocity,
+  drawControlHistory,
   cspaceGeometry,
 } from "/arm_scene.js";
 const $ = (id) => document.getElementById(id);
@@ -38,24 +39,55 @@ let playing = false,
 let mode = "fk",
   ikResult = null,
   preferredBranch = "elbow-up";
+const controller = {
+  running: false,
+  runVersion: 0,
+  inFlight: false,
+  timer: null,
+  feedback: null,
+  time: 0,
+  history: [],
+  initial: [30, 60],
+  limit: false,
+};
 const angles = () => [Number($("q1").value), Number($("q2").value)];
 
 function draw() {
   if (!current) return;
   for (const name of ["workspace", "frames", "angles", "trail", "alternate"])
     options[name] = $("show-" + name).checked;
-  const rates = [Number($("dq1").value), Number($("dq2").value)];
+  const rates =
+    mode === "control" && controller.feedback
+      ? controller.feedback.joint_rates
+      : [Number($("dq1").value), Number($("dq2").value)];
   const velocity = jointVelocity(current.differential.jacobian, rates);
   options.velocity = $("show-velocity").checked ? velocity : null;
+  options.requestedVelocity =
+    mode === "control" ? controller.feedback?.requested_velocity : null;
   updateDifferential(current.differential, velocity, rates);
-  drawVelocity($("velocity-plot"), current.differential, velocity);
+  drawControlHistory($("control-history"), controller.history);
+  renderControl();
+  drawVelocity(
+    $("velocity-plot"),
+    current.differential,
+    velocity,
+    options.requestedVelocity,
+  );
   drawArm(
     $("plot"),
     current,
     options,
     samples,
     camera,
-    mode === "ik" ? ikResult : null,
+    mode === "ik"
+      ? ikResult
+      : mode === "control" && controller.feedback
+        ? {
+            target: controller.feedback.target,
+            reachable: controller.feedback.reachable,
+            solutions: [],
+          }
+        : null,
   );
   drawCspace($("cspace"), current, samples, mode === "ik" ? ikResult : null);
   drawHistory($("history"), current, samples);
@@ -81,6 +113,7 @@ function setProgress() {
   $("progress-value").textContent = `${Math.round(phase * 100)}%`;
 }
 function pauseMotion(status = "Paused") {
+  pauseControl();
   playing = false;
   cancelAnimationFrame(animation);
   $("play").textContent = "Play motion";
@@ -225,8 +258,9 @@ for (const name of ["l1", "l2"]) {
     samples = [];
     origin = performance.now();
     ikResult = null;
+    controller.feedback = null;
     const updated = await update();
-    if (updated && mode === "ik") solveTarget();
+    if (updated && mode !== "fk") solveTarget();
   });
 }
 $("pattern").addEventListener("change", () => {
@@ -266,7 +300,7 @@ function setView(view) {
   $("scene-caption").textContent =
     view === "3d"
       ? "Drag to orbit · scroll to zoom"
-      : mode === "ik"
+      : mode !== "fk"
         ? "Click or drag to place the hand target · metres"
         : "Angles in the world xy plane · distances in metres";
   $("camera-reset").hidden = view !== "3d";
@@ -284,7 +318,7 @@ $("camera-reset").addEventListener("click", () => {
 });
 $("clear-trail").addEventListener("click", clearHistory);
 $("retry").addEventListener("click", () =>
-  mode === "ik" ? solveTarget() : update(),
+  mode !== "fk" ? solveTarget() : update(),
 );
 let orbit = null,
   targeting = false;
@@ -304,7 +338,7 @@ function pickTarget(e) {
 }
 $("plot").addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
-  if (mode === "ik" && options.view === "plan" && current) {
+  if (mode !== "fk" && options.view === "plan" && current) {
     e.preventDefault();
     targeting = true;
     $("plot").setPointerCapture(e.pointerId);
@@ -349,7 +383,7 @@ $("plot").addEventListener(
 );
 let choosing = false;
 function pickConfiguration(e) {
-  if (mode === "ik") setMode("fk");
+  if (mode !== "fk") setMode("fk");
   const svg = $("cspace"),
     rect = svg.getBoundingClientRect(),
     g = cspaceGeometry(svg);
@@ -375,7 +409,7 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
 new ResizeObserver(draw).observe($("plot"));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && playing) pauseMotion();
+  if (document.hidden) pauseMotion();
 });
 update();
 
@@ -402,23 +436,50 @@ function setMode(next) {
   cancelRequest();
   pauseMotion();
   mode = next;
-  const inverse = mode === "ik";
-  $("mode-fk").setAttribute("aria-pressed", String(!inverse));
+  const inverse = mode === "ik",
+    tracking = mode === "control";
+  $("mode-control").setAttribute("aria-pressed", String(tracking));
+  $("analytic-controls").hidden = !inverse;
+  $("control-buttons").hidden = !tracking;
+  $("preview-rates").disabled = tracking;
+  $("target-error-label").textContent = tracking
+    ? "Distance to target"
+    : "FK position error";
+  $("velocity-explanation").textContent = tracking
+    ? "Controller joint rates and requested/achieved velocity at the displayed pose."
+    : "Preview instantaneous velocity at the current pose. These rates do not move the arm.";
+  controller.feedback = null;
+  for (const id of ["target-x", "target-y"]) {
+    if (tracking) {
+      $(id).min = -5;
+      $(id).max = 5;
+    } else {
+      $(id).removeAttribute("min");
+      $(id).removeAttribute("max");
+    }
+  }
+  if (tracking) {
+    controller.initial = angles();
+    resetControlHistory();
+  }
+  $("mode-fk").setAttribute("aria-pressed", String(mode === "fk"));
   $("mode-ik").setAttribute("aria-pressed", String(inverse));
-  $("ik-controls").hidden = !inverse;
-  $("joint-controls").disabled = inverse;
-  $("fk-presets").hidden = inverse;
-  $("motion-controls").hidden = inverse;
+  $("ik-controls").hidden = mode === "fk";
+  $("joint-controls").disabled = mode !== "fk";
+  $("fk-presets").hidden = mode !== "fk";
+  $("motion-controls").hidden = mode !== "fk";
   $("plot").dataset.control = mode;
-  $("mode-label").textContent = inverse
-    ? "Inverse kinematics / Target → joint angles"
-    : "Forward kinematics / Angles → hand pose";
+  $("mode-label").textContent = tracking
+    ? "Closed-loop control / Target → joint rates → motion"
+    : inverse
+      ? "Inverse kinematics / Target → joint angles"
+      : "Forward kinematics / Angles → hand pose";
   phase = 0;
   setProgress();
   motionBase = angles();
   samples = [];
   origin = performance.now();
-  if (inverse) {
+  if (mode !== "fk") {
     setView("plan");
     solveTarget();
   } else {
@@ -480,6 +541,10 @@ function renderIKControls() {
     : "Up/down are the left/right sides of the directed base-to-target line, not screen height.";
 }
 async function solveTarget() {
+  if (mode === "control") {
+    refreshControl();
+    return;
+  }
   for (const id of ["target-x", "target-y"]) {
     if (!$(id).checkValidity() || !Number.isFinite($(id).valueAsNumber)) {
       $(id).reportValidity();
@@ -576,6 +641,7 @@ $("show-alternate").addEventListener("change", () => {
 
 function updateDifferential(d, velocity, rates) {
   rates.forEach((q, i) => {
+    if (mode === "control") $("dq" + (i + 1)).value = String(q);
     $("dq" + (i + 1) + "-value").textContent = fixed(q, 2) + " rad/s";
   });
   $("velocity-result").textContent =
@@ -625,10 +691,242 @@ for (const button of document.querySelectorAll("[data-rate]"))
   });
 for (const button of document.querySelectorAll("[data-jacobian-pose]"))
   button.addEventListener("click", () => {
-    if (mode === "ik") setMode("fk");
+    if (mode !== "fk") setMode("fk");
     setAngles(button.dataset.jacobianPose.split(",").map(Number));
     samples = [];
     origin = performance.now();
     manualChange();
   });
 new ResizeObserver(draw).observe($("velocity-plot"));
+
+function pauseControl() {
+  ++controller.runVersion;
+  controller.running = false;
+  clearTimeout(controller.timer);
+  if (controller.inFlight) {
+    cancelRequest();
+    controller.inFlight = false;
+  }
+  $("control-run").textContent = "Run controller";
+  renderControl();
+}
+function resetControlHistory() {
+  controller.time = 0;
+  controller.history = [];
+  controller.limit = false;
+}
+function validTarget() {
+  for (const id of ["target-x", "target-y"]) {
+    if (!$(id).checkValidity() || !Number.isFinite($(id).valueAsNumber)) {
+      $(id).reportValidity();
+      return false;
+    }
+  }
+  return true;
+}
+function refreshControl() {
+  pauseMotion();
+  if (!validTarget()) {
+    controller.feedback = null;
+    renderControl();
+    $("ik-error").textContent = "—";
+    $("ik-status").textContent = "Enter valid target coordinates (−5 to 5 m)";
+    return;
+  }
+  resetControlHistory();
+  controller.feedback = null;
+  controlStep(0);
+}
+async function controlStep(dt) {
+  if (mode !== "control" || !validTarget()) return false;
+  const request = ++version;
+  pending?.abort();
+  pending = new AbortController();
+  controller.inFlight = true;
+  busy = true;
+  const [q1, q2] = angles();
+  const params = new URLSearchParams({
+    q1,
+    q2,
+    x: $("target-x").value,
+    y: $("target-y").value,
+    l1: $("l1").value,
+    l2: $("l2").value,
+    dt,
+    method: $("control-method").value,
+    gain: $("control-gain").value,
+    damping: $("control-damping").value,
+  });
+  try {
+    const response = await fetch(`/api/control?${params}`, {
+      signal: pending.signal,
+    });
+    if (!response.ok) throw new Error("Controller unavailable");
+    const result = await response.json();
+    if (request !== version || mode !== "control") return false;
+    controller.feedback = result.command;
+    if (!controller.history.length)
+      controller.history.push({
+        time: controller.time,
+        error: result.error_before,
+      });
+    controller.time = Math.round((controller.time + dt) * 100) / 100;
+    if (dt)
+      controller.history.push({
+        time: controller.time,
+        error: result.command.error_norm,
+      });
+    if (controller.history.length > 600) controller.history.shift();
+    if (result.command.status !== "tracking" || controller.time >= 15) {
+      controller.running = false;
+      controller.limit =
+        controller.time >= 15 && result.command.status === "tracking";
+    }
+    applyPose(result.pose);
+    return true;
+  } catch (error) {
+    if (request === version && error.name !== "AbortError") {
+      controller.running = false;
+      $("connection-error").hidden = false;
+      $("ik-status").textContent = "Controller unavailable · retry connection";
+    }
+    return false;
+  } finally {
+    if (request === version) {
+      busy = false;
+      controller.inFlight = false;
+    }
+  }
+}
+async function controlLoop(runVersion) {
+  if (!controller.running || runVersion !== controller.runVersion) return;
+  const ok = await controlStep(0.04);
+  if (runVersion !== controller.runVersion) return;
+  if (!ok) {
+    controller.running = false;
+    return;
+  }
+  if (controller.running)
+    controller.timer = setTimeout(() => controlLoop(runVersion), 40);
+}
+function renderControl() {
+  $("control-damping-value").textContent = fixed(
+    Number($("control-damping").value),
+    2,
+  );
+  $("control-gain-value").textContent =
+    fixed(Number($("control-gain").value), 2) + " /s";
+  $("control-damping").disabled = $("control-method").value === "pinv";
+  $("control-run").textContent = controller.running
+    ? "Pause controller"
+    : "Run controller";
+  $("control-time").textContent = fixed(controller.time, 2) + " s";
+  $("control-history-caption").textContent = controller.history.length
+    ? `${controller.history.length} samples · ${fixed(controller.time, 2)} simulated seconds · 0.01 m goal tolerance`
+    : "Run or step the controller to record progress.";
+  const c = controller.feedback;
+  for (const [id, value] of [
+    ["requested", c ? pair(c.requested_velocity) : "—"],
+    ["achieved", c ? pair(c.achieved_velocity) : "—"],
+    ["residual", c ? fixed(c.velocity_residual) : "—"],
+    ["rates", c ? pair(c.joint_rates) : "—"],
+    ["limited", c ? (c.rate_limited ? "Yes" : "No") : "—"],
+  ])
+    $("control-" + id).textContent = value;
+  $("control-raw-peak").textContent = c
+    ? fixed(Math.max(...c.raw_joint_rates.map(Math.abs)), 2) + " rad/s"
+    : "—";
+  const canStep = !!c && c.status === "tracking" && !controller.limit;
+  $("control-run").disabled = !controller.running && !canStep;
+  $("control-step").disabled = !canStep;
+  if (mode !== "control" || !c) return;
+  const titles = {
+    tracking: controller.limit
+      ? "Time limit · residual error remains"
+      : controller.running
+        ? "Tracking target"
+        : "Paused · ready to track",
+    reached: "Target reached",
+    stalled: "Stalled at singularity",
+    unreachable: "Unreachable target",
+  };
+  const explanations = {
+    tracking:
+      "Run to reduce position error. Red arrows request hand velocity; green arrows show what the limited joint rates achieve.",
+    reached:
+      "The hand is within 0.01 m of the target. Joint rates are now zero.",
+    stalled:
+      "The target is reachable, but this local Jacobian cannot move toward it from this pose. Start from a bent configuration; damping alone cannot escape this trap.",
+    unreachable:
+      "The target is outside the reachable annulus. The controller holds the current configuration.",
+  };
+  $("ik-status").textContent = titles[c.status];
+  $("ik-status").dataset.state =
+    c.status === "unreachable"
+      ? "unreachable"
+      : c.status === "stalled" || controller.limit
+        ? "singular"
+        : "reachable";
+  $("ik-message").textContent = controller.limit
+    ? "Stopped after 15 simulated seconds. Reset or change settings to run another experiment."
+    : explanations[c.status];
+  $("ik-error").textContent = fixed(c.error_norm, 4) + " m";
+}
+$("mode-control").addEventListener("click", () => setMode("control"));
+$("enable-control").addEventListener("click", () => setMode("control"));
+$("control-run").addEventListener("click", () => {
+  if (controller.running) {
+    pauseControl();
+    draw();
+    return;
+  }
+  if (
+    busy ||
+    !controller.feedback ||
+    controller.feedback.status !== "tracking" ||
+    controller.limit
+  )
+    return;
+  pauseMotion();
+  controller.running = true;
+  controlLoop(++controller.runVersion);
+});
+$("control-step").addEventListener("click", () => {
+  pauseControl();
+  if (!busy && !controller.limit) controlStep(0.04);
+});
+$("control-reset").addEventListener("click", () => {
+  pauseControl();
+  setAngles(controller.initial);
+  samples = [];
+  origin = performance.now();
+  refreshControl();
+});
+for (const id of ["control-method", "control-damping", "control-gain"])
+  $(id).addEventListener("change", () => {
+    if (mode === "control") refreshControl();
+    else draw();
+  });
+for (const button of document.querySelectorAll("[data-control-example]"))
+  button.addEventListener("click", () => {
+    const example = button.dataset.controlExample;
+    const start =
+      example === "trap" ? [0, 0] : example === "near" ? [0, 5] : [30, 60];
+    // The midpoint radius of the reachable annulus equals the longer link.
+    const l1 = Number($("l1").value),
+      l2 = Number($("l2").value);
+    const radius = Math.max(l1, l2);
+    const target =
+      example === "trap"
+        ? [l1 + l2 - Math.min(l1, l2) * 0.5, 0]
+        : example === "near"
+          ? [radius * 0.99, radius * Math.sqrt(1 - 0.99 ** 2)]
+          : [(radius * 12) / 13, (radius * 5) / 13];
+    pauseMotion();
+    setAngles(start);
+    [$("target-x"), $("target-y")].forEach((f, i) => {
+      f.value = target[i];
+    });
+    setMode("control");
+  });
+new ResizeObserver(draw).observe($("control-history"));

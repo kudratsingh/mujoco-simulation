@@ -877,3 +877,49 @@ fieldset:disabled input {
     display: none;
   }
 }
+.controller-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(260px, 1.3fr) minmax(
+      210px,
+      1fr
+    );
+  gap: 24px;
+  padding: 0 22px 22px;
+}
+.controller-grid input[type="range"] {
+  width: 100%;
+}
+.controller-grid .control-title {
+  margin-top: 14px;
+}
+.controller-grid label,
+.controller-grid output {
+  font-size: 12px;
+}
+#control-history {
+  width: 100%;
+  height: 260px;
+  display: block;
+}
+#control-buttons .play-row {
+  flex-wrap: wrap;
+}
+.control-mode button {
+  padding: 8px 6px;
+}
+#plot[data-control="control"][data-view="plan"] {
+  cursor: crosshair;
+}
+@media (max-width: 1100px) {
+  .controller-grid {
+    grid-template-columns: 1fr 1.2fr;
+  }
+  .controller-grid .jacobian-metrics {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 650px) {
+  .controller-grid {
+    grid-template-columns: 1fr;
+  }
+}

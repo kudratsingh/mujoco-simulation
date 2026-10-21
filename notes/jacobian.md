@@ -140,5 +140,5 @@ explains lost velocity directions when Jacobian rank drops.
 describes mapping a joint-rate sphere to an end-effector velocity ellipsoid.
 The planar ellipse here is the two-dimensional version of that construction.
 
-Next: use the Jacobian for differential control, with damped least squares near
-singularities, and compare a requested hand velocity with the achievable one.
+The next experiment is implemented in [closed-loop target tracking](resolved_rate_control.md):
+use damped least squares to turn a hand-position error into joint rates.

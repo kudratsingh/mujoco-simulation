@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 import webbrowser
 
 from planar_arm import ik_payload, pose_payload
+from resolved_rate import control_payload
 
 HTML_PATH = Path(__file__).with_suffix(".html")
 ASSETS = {f"/{name}": HTML_PATH.parent / name for name in (
@@ -52,12 +53,25 @@ class ArmHandler(BaseHTTPRequestHandler):
         elif url.path in ASSETS:
             content_type = "text/css" if url.path.endswith(".css") else "text/javascript"
             self.send_content(200, ASSETS[url.path].read_bytes(), content_type + "; charset=utf-8")
-        elif url.path in ("/api/pose", "/api/ik"):
+        elif url.path in ("/api/pose", "/api/ik", "/api/control"):
             try:
                 values = parse_qs(url.query, keep_blank_values=True)
                 l1 = query_number(values, "l1", 1, 0.25, 1.5)
                 l2 = query_number(values, "l2", 0.75, 0.25, 1.5)
-                if url.path == "/api/ik":
+                if url.path == "/api/control":
+                    if len(values.get("method", ["dls"])) != 1:
+                        raise ValueError("method must appear once")
+                    payload = control_payload(
+                        query_number(values, "q1", 30, -180, 180),
+                        query_number(values, "q2", 60, -180, 180),
+                        query_number(values, "x", 1.1, -5, 5),
+                        query_number(values, "y", 0.45, -5, 5), l1, l2,
+                        dt=query_number(values, "dt", 0.04, 0, 0.05),
+                        gain=query_number(values, "gain", 2, 0.1, 5),
+                        damping=query_number(values, "damping", 0.12, 0.01, 1),
+                        method=values.get("method", ["dls"])[0],
+                    )
+                elif url.path == "/api/ik":
                     x = query_number(values, "x", 1)
                     y = query_number(values, "y", 0.75)
                     hint = query_number(values, "shoulder_hint", 0, -180, 180)

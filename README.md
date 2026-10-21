@@ -26,7 +26,10 @@ validation. Choose **Hand target · IK** to click a target, compare both elbow
 solutions and explore reach limits. See [the IK walkthrough](notes/inverse_kinematics.md).
 The **Jacobian velocity lab** maps joint speeds to hand velocity, draws the
 manipulability ellipse, and shows rank loss at straight/folded configurations.
-See [the Jacobian walkthrough](notes/jacobian.md). Arm control comes next.
+See [the Jacobian walkthrough](notes/jacobian.md). **Track target** closes the
+loop with a damped-least-squares velocity controller, error chart and singularity
+experiments. See [the control walkthrough](notes/resolved_rate_control.md).
+Torque dynamics are a later step.
 Use the Mac venv for this viewer.
 
 ## Week 1 tracks
@@ -69,6 +72,8 @@ What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
   inverses, composition, the worked world/base/camera example.
 - `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
   and independent agreement with the MuJoCo two-link model.
+- `test_resolved_rate.py` - closed-loop convergence, damping vs pseudoinverse,
+  rate limits, singular stalls, unreachable targets and preview consistency.
 - `test_jacobian.py` - analytic derivatives vs finite differences and MuJoCo,
   determinant, singular values, rank loss and local velocity prediction.
 - `test_inverse_kinematics.py` and `test_ik_api.py` - both elbow solutions, reach
