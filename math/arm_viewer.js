@@ -67,7 +67,7 @@ function clearHistory() {
     "History cleared. Move a joint or play a motion.";
 }
 function setAngles(q) {
-  for (let i = 0; i < 2; i++) $(`q${i + 1}`).value = q[i].toFixed(1);
+  for (let i = 0; i < 2; i++) $(`q${i + 1}`).value = String(q[i]);
 }
 function setProgress() {
   $("progress").value = (phase * 100).toFixed(1);
