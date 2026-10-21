@@ -718,3 +718,85 @@ footer strong {
     margin-top: 0;
   }
 }
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+fieldset:disabled input {
+  opacity: 0.6;
+  cursor: default;
+}
+.control-mode {
+  margin-top: 15px;
+}
+.control-mode button {
+  flex: 1;
+  font-size: 11px;
+}
+.ik-panel {
+  margin-top: 17px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.ik-panel > .help {
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.target-examples {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.target-examples button {
+  flex: 1;
+  padding: 6px;
+  font-size: 10px;
+}
+.reach-status {
+  margin-top: 15px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--green);
+}
+.reach-status[data-state="unreachable"] {
+  color: var(--warn);
+}
+.reach-status[data-state="singular"] {
+  color: var(--orange);
+}
+.reach-status[data-state="pending"] {
+  color: var(--muted);
+}
+.branch-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 13px;
+}
+.branch-buttons button {
+  font-size: 12px;
+  font-weight: 550;
+}
+.branch-buttons span {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.alternate-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 12px;
+}
+#plot[data-view="plan"][data-control="ik"] {
+  cursor: crosshair;
+}
+#motion-controls:disabled {
+  opacity: 0.45;
+}

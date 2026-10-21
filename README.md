@@ -10,7 +10,7 @@ without notes.
 
 ## Week 2 in progress
 
-The first artifact is a two-link planar arm: tested forward kinematics and an
+The first artifact is a two-link planar arm: tested forward and inverse kinematics and an
 interactive browser lab. Orbit its 3D schematic or use Plan view, play joint
 sweeps, choose configurations on the joint-angle map, and compare the hand trail
 with its position history. Adjustable link lengths, frame/angle overlays and
@@ -22,8 +22,9 @@ the live transform chain connect the geometry to the Week-1 concepts.
 ```
 
 See [the arm walkthrough](notes/planar_arm.md) for the derivation, presets and
-validation. Forward kinematics is implemented; inverse kinematics, Jacobians and
-arm control are the next steps. Use the Mac venv for this viewer.
+validation. Choose **Hand target · IK** to click a target, compare both elbow
+solutions and explore reach limits. See [the IK walkthrough](notes/inverse_kinematics.md).
+Jacobian analysis and arm control come next. Use the Mac venv for this viewer.
 
 ## Week 1 tracks
 
@@ -65,10 +66,12 @@ What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
   inverses, composition, the worked world/base/camera example.
 - `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
   and independent agreement with the MuJoCo two-link model.
+- `test_inverse_kinematics.py` and `test_ik_api.py` - both elbow solutions, reach
+  boundaries, singular families, FK round trips, MuJoCo comparisons and IK HTTP validation.
 - `test_arm_viewer.py` - the browser viewer's localhost HTTP interface and
   adjustable geometry and input validation; no graphical browser is needed in CI.
 - `tests/js/test_arm_motion.mjs` - prescribed motion boundaries, fixed-joint
-  sweeps, angle wrapping and configuration-space trace seams.
+  sweeps, angle wrapping, configuration-space trace seams, target picking and IK branch selection.
 - `test_model.py` - `one_joint.xml`: 1 DoF hinge, 2 ms timestep, motor with
   gear 1 and ctrlrange ±50 N·m, joint damping 0.05, gravity on.
 - `test_simulate.py` - `reset()` initial state, a free swing stays bounded

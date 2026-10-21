@@ -36,3 +36,28 @@ export function splitWrappedPath(samples) {
   }
   return segments;
 }
+
+export function planGeometry(width, height, radius) {
+  const extent = radius + 0.35;
+  return {
+    ox: width / 2,
+    oy: height / 2,
+    scale:
+      Math.min((width - 65) / (2 * extent), (height - 65) / (2 * extent)) *
+      1.15,
+  };
+}
+
+export function targetFromPlanPoint(px, py, width, height, radius) {
+  const g = planGeometry(width, height, radius);
+  return [(px - g.ox) / g.scale, (g.oy - py) / g.scale];
+}
+
+export function selectIKSolution(result, preferredBranch) {
+  if (!result?.reachable) return null;
+  return (
+    result.solutions.find((s) => s.branch === preferredBranch) ??
+    result.solutions[0] ??
+    null
+  );
+}

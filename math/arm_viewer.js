@@ -1,4 +1,8 @@
-import { motionAngles } from "/arm_motion.mjs";
+import {
+  motionAngles,
+  targetFromPlanPoint,
+  selectIKSolution,
+} from "/arm_motion.mjs";
 import {
   drawArm,
   drawCspace,
@@ -15,6 +19,7 @@ const options = {
   frames: true,
   angles: true,
   trail: true,
+  alternate: true,
 };
 let current = null,
   samples = [],
@@ -28,12 +33,24 @@ let playing = false,
   lastTick = 0,
   lastSent = 0,
   animation = 0;
+let mode = "fk",
+  ikResult = null,
+  preferredBranch = "elbow-up";
 const angles = () => [Number($("q1").value), Number($("q2").value)];
 
 function draw() {
   if (!current) return;
-  drawArm($("plot"), current, options, samples, camera);
-  drawCspace($("cspace"), current, samples);
+  for (const name of ["workspace", "frames", "angles", "trail", "alternate"])
+    options[name] = $("show-" + name).checked;
+  drawArm(
+    $("plot"),
+    current,
+    options,
+    samples,
+    camera,
+    mode === "ik" ? ikResult : null,
+  );
+  drawCspace($("cspace"), current, samples, mode === "ik" ? ikResult : null);
   drawHistory($("history"), current, samples);
 }
 function clearHistory() {
@@ -73,6 +90,7 @@ function manualChange() {
 function updateLabels(p) {
   for (let i = 0; i < 2; i++) {
     const name = `q${i + 1}`;
+    $(name).value = String(p.angles_deg[i]);
     $(name + "-value").textContent = `${fixed(p.angles_deg[i], 1)}°`;
     if (document.activeElement !== $(name + "-number"))
       $(name + "-number").value = fixed(p.angles_deg[i], 1);
@@ -123,18 +141,8 @@ async function update() {
     if (!response.ok) throw new Error("Pose unavailable");
     const p = await response.json();
     if (request !== version) return;
-    current = p;
-    updateLabels(p);
-    samples.push({
-      time: (performance.now() - origin) / 1000,
-      position: p.positions[2],
-      angles: p.angles_deg,
-    });
-    if (samples.length > 600) samples.shift();
-    draw();
-    $("sample-count").textContent =
-      `${samples.length} sampled poses · current x ${fixed(p.positions[2][0])}, y ${fixed(p.positions[2][1])} m`;
-    $("connection-error").hidden = true;
+    applyPose(p);
+    return true;
   } catch (error) {
     if (error.name !== "AbortError" && request === version) {
       pauseMotion("Connection lost");
@@ -196,7 +204,7 @@ for (const name of ["q1", "q2"]) {
 }
 for (const name of ["l1", "l2"]) {
   $(name).addEventListener("focus", () => pauseMotion());
-  $(name).addEventListener("change", () => {
+  $(name).addEventListener("change", async () => {
     const field = $(name);
     if (!field.checkValidity() || !Number.isFinite(field.valueAsNumber)) {
       field.reportValidity();
@@ -209,7 +217,9 @@ for (const name of ["l1", "l2"]) {
     motionBase = angles();
     samples = [];
     origin = performance.now();
-    update();
+    ikResult = null;
+    const updated = await update();
+    if (updated && mode === "ik") solveTarget();
   });
 }
 $("pattern").addEventListener("change", () => {
@@ -241,22 +251,22 @@ for (const name of ["workspace", "frames", "angles", "trail"])
     options[name] = $("show-" + name).checked;
     draw();
   });
-for (const [button, view] of [
-  ["view3d", "3d"],
-  ["view2d", "plan"],
-])
-  $(button).addEventListener("click", () => {
-    options.view = view;
-    $("plot").dataset.view = view;
-    $("view3d").setAttribute("aria-pressed", String(view === "3d"));
-    $("view2d").setAttribute("aria-pressed", String(view === "plan"));
-    $("scene-caption").textContent =
-      view === "3d"
-        ? "Drag to orbit · scroll to zoom"
+function setView(view) {
+  options.view = view;
+  $("plot").dataset.view = view;
+  $("view3d").setAttribute("aria-pressed", String(view === "3d"));
+  $("view2d").setAttribute("aria-pressed", String(view === "plan"));
+  $("scene-caption").textContent =
+    view === "3d"
+      ? "Drag to orbit · scroll to zoom"
+      : mode === "ik"
+        ? "Click or drag to place the hand target · metres"
         : "Angles in the world xy plane · distances in metres";
-    $("camera-reset").hidden = view !== "3d";
-    draw();
-  });
+  $("camera-reset").hidden = view !== "3d";
+  draw();
+}
+$("view3d").addEventListener("click", () => setView("3d"));
+$("view2d").addEventListener("click", () => setView("plan"));
 $("camera-reset").addEventListener("click", () => {
   Object.assign(camera, {
     yaw: -Math.PI / 4,
@@ -266,15 +276,44 @@ $("camera-reset").addEventListener("click", () => {
   draw();
 });
 $("clear-trail").addEventListener("click", clearHistory);
-$("retry").addEventListener("click", update);
-let orbit = null;
+$("retry").addEventListener("click", () =>
+  mode === "ik" ? solveTarget() : update(),
+);
+let orbit = null,
+  targeting = false;
+function pickTarget(e) {
+  const svg = $("plot"),
+    rect = svg.getBoundingClientRect();
+  const [x, y] = targetFromPlanPoint(
+    e.clientX - rect.left,
+    e.clientY - rect.top,
+    svg.clientWidth,
+    svg.clientHeight,
+    current.workspace_radii[1],
+  );
+  $("target-x").value = x;
+  $("target-y").value = y;
+  solveTarget();
+}
 $("plot").addEventListener("pointerdown", (e) => {
-  if (options.view !== "3d" || e.button !== 0) return;
+  if (e.button !== 0) return;
+  if (mode === "ik" && options.view === "plan" && current) {
+    e.preventDefault();
+    targeting = true;
+    $("plot").setPointerCapture(e.pointerId);
+    pickTarget(e);
+    return;
+  }
+  if (options.view !== "3d") return;
   e.preventDefault();
   orbit = [e.clientX, e.clientY, camera.yaw, camera.pitch];
   $("plot").setPointerCapture(e.pointerId);
 });
 $("plot").addEventListener("pointermove", (e) => {
+  if (targeting) {
+    pickTarget(e);
+    return;
+  }
   if (!orbit) return;
   camera.yaw = orbit[2] - (e.clientX - orbit[0]) * 0.009;
   camera.pitch = Math.max(
@@ -284,7 +323,10 @@ $("plot").addEventListener("pointermove", (e) => {
   draw();
 });
 for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
-  $("plot").addEventListener(event, () => (orbit = null));
+  $("plot").addEventListener(event, () => {
+    orbit = null;
+    targeting = false;
+  });
 $("plot").addEventListener(
   "wheel",
   (e) => {
@@ -300,6 +342,7 @@ $("plot").addEventListener(
 );
 let choosing = false;
 function pickConfiguration(e) {
+  if (mode === "ik") setMode("fk");
   const svg = $("cspace"),
     rect = svg.getBoundingClientRect(),
     g = cspaceGeometry(svg);
@@ -328,3 +371,198 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && playing) pauseMotion();
 });
 update();
+
+function applyPose(p) {
+  current = p;
+  updateLabels(p);
+  samples.push({
+    time: (performance.now() - origin) / 1000,
+    position: p.positions[2],
+    angles: p.angles_deg,
+  });
+  if (samples.length > 600) samples.shift();
+  draw();
+  $("sample-count").textContent =
+    `${samples.length} sampled poses · current x ${fixed(p.positions[2][0])}, y ${fixed(p.positions[2][1])} m`;
+  $("connection-error").hidden = true;
+}
+function cancelRequest() {
+  ++version;
+  pending?.abort();
+  busy = false;
+}
+function setMode(next) {
+  cancelRequest();
+  pauseMotion();
+  mode = next;
+  const inverse = mode === "ik";
+  $("mode-fk").setAttribute("aria-pressed", String(!inverse));
+  $("mode-ik").setAttribute("aria-pressed", String(inverse));
+  $("ik-controls").hidden = !inverse;
+  $("joint-controls").disabled = inverse;
+  $("fk-presets").hidden = inverse;
+  $("motion-controls").hidden = inverse;
+  $("plot").dataset.control = mode;
+  $("mode-label").textContent = inverse
+    ? "Inverse kinematics / Target → joint angles"
+    : "Forward kinematics / Angles → hand pose";
+  phase = 0;
+  setProgress();
+  motionBase = angles();
+  samples = [];
+  origin = performance.now();
+  if (inverse) {
+    setView("plan");
+    solveTarget();
+  } else {
+    ikResult = null;
+    setView(options.view);
+    update();
+  }
+}
+function applySolution(solution) {
+  ikResult.selectedBranch = solution.branch;
+  // Preserve the solver's precision. Display rounding never feeds back into FK.
+  solution.pose.angles_deg.forEach((q, i) => {
+    $(`q${i + 1}`).value = String(q);
+  });
+  samples = [];
+  origin = performance.now();
+  applyPose(solution.pose);
+  $("ik-error").textContent = solution.error.toExponential(2) + " m";
+  renderIKControls();
+}
+function renderIKControls() {
+  const r = ikResult;
+  for (const branch of ["up", "down"]) {
+    const solution = r?.solutions.find((s) => s.branch === `elbow-${branch}`);
+    $("branch-" + branch).disabled = !solution;
+    $("branch-" + branch).setAttribute(
+      "aria-pressed",
+      String(!!solution && solution.branch === r.selectedBranch),
+    );
+    $("branch-" + branch + "-angles").textContent = solution
+      ? solution.pose.angles_deg.map((q) => fixed(q, 1) + "°").join(" / ")
+      : "—";
+  }
+  if (!r) return;
+  $("ik-status").dataset.state = !r.reachable
+    ? "unreachable"
+    : r.singular
+      ? "singular"
+      : "reachable";
+  $("ik-status").textContent = !r.reachable
+    ? "Unreachable target"
+    : r.infinite
+      ? "Infinitely many solutions"
+      : r.singular
+        ? "One configuration · reach boundary"
+        : "Two solutions · same hand position";
+  $("ik-message").textContent = !r.reachable
+    ? (r.reason === "inside_hole"
+        ? "Target is inside the central hole."
+        : "Target is beyond the outer reach.") +
+      " The arm keeps its last configuration."
+    : r.infinite
+      ? "Equal links folded at the base: every shoulder angle works. Showing the current shoulder angle."
+      : r.singular
+        ? "The two elbow branches merge here. The joint-angle readouts show the solution."
+        : "Switch elbow branches. The hand stays at the target; its heading can change.";
+  $("ik-branch-note").textContent = r.infinite
+    ? "The representative keeps the previous shoulder angle; q₂ = −180°."
+    : "Up/down are the left/right sides of the directed base-to-target line, not screen height.";
+}
+async function solveTarget() {
+  for (const id of ["target-x", "target-y"]) {
+    if (!$(id).checkValidity() || !Number.isFinite($(id).valueAsNumber)) {
+      $(id).reportValidity();
+      return;
+    }
+  }
+  const request = ++version;
+  pending?.abort();
+  pending = new AbortController();
+  busy = true;
+  ikResult = null;
+  renderIKControls();
+  $("ik-status").dataset.state = "pending";
+  $("ik-status").textContent = "Solving target…";
+  $("ik-error").textContent = "—";
+  const params = new URLSearchParams({
+    x: $("target-x").value,
+    y: $("target-y").value,
+    l1: $("l1").value,
+    l2: $("l2").value,
+    shoulder_hint: angles()[0],
+  });
+  try {
+    const response = await fetch(`/api/ik?${params}`, {
+      signal: pending.signal,
+    });
+    if (!response.ok) throw new Error("IK unavailable");
+    const result = await response.json();
+    if (request !== version || mode !== "ik") return;
+    ikResult = result;
+    const solution = selectIKSolution(result, preferredBranch);
+    if (solution) applySolution(solution);
+    else {
+      // If a target edit overtook a geometry refresh, keep the last joint
+      // configuration but rebuild its FK pose with the selected link lengths.
+      if (
+        current &&
+        result.lengths.some((length, i) => length !== current.lengths[i])
+      ) {
+        const [q1, q2] = angles();
+        const fallback = await fetch(
+          `/api/pose?${new URLSearchParams({ q1, q2, l1: result.lengths[0], l2: result.lengths[1] })}`,
+          { signal: pending.signal },
+        );
+        if (!fallback.ok) throw new Error("Pose unavailable");
+        const pose = await fallback.json();
+        if (request !== version || mode !== "ik") return;
+        samples = [];
+        origin = performance.now();
+        applyPose(pose);
+      }
+      renderIKControls();
+      draw();
+    }
+    $("connection-error").hidden = true;
+  } catch (error) {
+    if (request === version && error.name !== "AbortError") {
+      $("connection-error").hidden = false;
+      $("ik-status").textContent = "Target unavailable · retry connection";
+    }
+  } finally {
+    if (request === version) busy = false;
+  }
+}
+$("mode-fk").addEventListener("click", () => setMode("fk"));
+$("mode-ik").addEventListener("click", () => setMode("ik"));
+for (const id of ["target-x", "target-y"])
+  $(id).addEventListener("change", solveTarget);
+for (const branch of ["up", "down"])
+  $("branch-" + branch).addEventListener("click", () => {
+    preferredBranch = `elbow-${branch}`;
+    const solution = selectIKSolution(ikResult, preferredBranch);
+    if (solution) applySolution(solution);
+  });
+for (const button of document.querySelectorAll("[data-target]"))
+  button.addEventListener("click", () => {
+    const l1 = Number($("l1").value),
+      l2 = Number($("l2").value);
+    const q =
+      button.dataset.target === "origin"
+        ? [0, 0]
+        : button.dataset.target === "beyond"
+          ? [l1 + l2 + 0.25, 0]
+          : [l1, l2];
+    [$("target-x"), $("target-y")].forEach((field, i) => {
+      field.value = q[i];
+    });
+    solveTarget();
+  });
+$("show-alternate").addEventListener("change", () => {
+  options.alternate = $("show-alternate").checked;
+  draw();
+});

@@ -1,4 +1,4 @@
-"""Week 2: forward kinematics for a planar arm with two revolute joints.
+"""Week 2: forward and inverse kinematics for a planar two-revolute-joint arm.
 
 Angles are radians, lengths are metres, and positive rotation is about +z.
 q1 is measured from world +x; q2 is relative to link 1, so the hand's
@@ -10,6 +10,29 @@ import math
 import numpy as np
 
 from transforms import make_transform, rot_z
+
+
+@dataclass(frozen=True)
+class IKSolution:
+    """One position-IK solution; angles are radians and error is in metres."""
+
+    branch: str
+    q1: float
+    q2: float
+    error: float
+
+    @property
+    def angles(self) -> tuple[float, float]:
+        return self.q1, self.q2
+
+
+@dataclass(frozen=True)
+class IKResult:
+    reachable: bool
+    solutions: tuple[IKSolution, ...] = ()
+    reason: str = ""
+    singular: bool = False
+    infinite: bool = False
 
 
 @dataclass(frozen=True)
@@ -56,6 +79,54 @@ class PlanarArm:
         """Minimum/maximum hand distance from the base, ignoring collisions."""
         return abs(self.l1 - self.l2), self.l1 + self.l2
 
+    def inverse_kinematics(self, x: float, y: float, shoulder_hint: float = 0.0) -> IKResult:
+        """Solve hand POSITION, leaving heading determined by the joint angles.
+
+        Elbow-up is the elbow to the left of the base-to-target ray (q2 < 0);
+        elbow-down is on its right (q2 > 0). At a radial reach limit these
+        branches coincide, so return one unique configuration. At the origin
+        with equal links there are infinitely many configurations; return one
+        representative using shoulder_hint rather than inventing two branches.
+        """
+        if not all(math.isfinite(v) for v in (x, y, shoulder_hint)):
+            raise ValueError("Target coordinates and shoulder hint must be finite")
+        r = math.hypot(x, y)
+        inner, outer = self.workspace_radii
+        tolerance = 32 * math.ulp(outer)
+
+        def solution(branch: str, q1: float, q2: float) -> IKSolution:
+            # One canonical representative per angle, matching the UI interval.
+            q1 = (q1 + math.pi) % (2 * math.pi) - math.pi
+            q2 = (q2 + math.pi) % (2 * math.pi) - math.pi
+            hand = self.joint_positions(q1, q2)[-1]
+            error = math.hypot(float(hand[0]) - x, float(hand[1]) - y)
+            return IKSolution(branch, q1, q2, error)
+
+        if r == 0:
+            if self.l1 != self.l2:
+                return IKResult(False, reason="inside_hole")
+            return IKResult(True, (solution("representative", shoulder_hint, math.pi),),
+                            singular=True, infinite=True)
+        if r < inner - tolerance:
+            return IKResult(False, reason="inside_hole")
+        if r > outer + tolerance:
+            return IKResult(False, reason="outside_reach")
+
+        # Clamp only floating-point noise at a boundary, not unreachable goals.
+        bounded_r = min(outer, max(inner, r))
+        a, b, t, d = self.l1 / outer, self.l2 / outer, bounded_r / outer, inner / outer
+        c2 = min(1.0, max(-1.0, (t*t - a*a - b*b) / (2*a*b)))
+        # Factorized triangle area preserves sin(q2) near fully folded equal
+        # links, where sqrt(1-cos(q2)^2) would cancel to zero prematurely.
+        s2 = math.sqrt(max(0.0, (1-t)*(1+t)*(t-d)*(t+d))) / (2*a*b)
+        phi = math.atan2(y, x)
+        singular = bounded_r == inner or bounded_r == outer
+        branches = (("singular", s2),) if singular else (("elbow-down", s2), ("elbow-up", -s2))
+        solutions = tuple(solution(branch,
+                                   phi - math.atan2(b*s, a + b*c2),
+                                   math.atan2(s, c2)) for branch, s in branches)
+        return IKResult(True, solutions, singular=singular)
+
 
 def pose_payload(q1_deg: float, q2_deg: float, l1: float = 1.0, l2: float = 0.75) -> dict:
     """Browser-facing representation; convert degrees to radians at the boundary."""
@@ -72,6 +143,27 @@ def pose_payload(q1_deg: float, q2_deg: float, l1: float = 1.0, l2: float = 0.75
         "workspace_radii": list(arm.workspace_radii),
         "transform": arm.forward_kinematics(q1, q2).tolist(),
         "chain": [matrix.tolist() for matrix in transforms],
+    }
+
+
+def ik_payload(x: float, y: float, l1: float = 1.0, l2: float = 0.75,
+               shoulder_hint_deg: float = 0.0) -> dict:
+    """Reachability and solutions, with each pose checked by the actual FK code."""
+    arm = PlanarArm(l1, l2)
+    result = arm.inverse_kinematics(x, y, math.radians(shoulder_hint_deg))
+    return {
+        "target": [x, y],
+        "lengths": [l1, l2],
+        "workspace_radii": list(arm.workspace_radii),
+        "reachable": result.reachable,
+        "reason": result.reason,
+        "singular": result.singular,
+        "infinite": result.infinite,
+        "solutions": [{
+            "branch": s.branch,
+            "error": s.error,
+            "pose": pose_payload(math.degrees(s.q1), math.degrees(s.q2), l1, l2),
+        } for s in result.solutions],
     }
 
 

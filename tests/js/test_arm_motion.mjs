@@ -4,6 +4,9 @@ import {
   motionAngles,
   wrapDegrees,
   splitWrappedPath,
+  planGeometry,
+  targetFromPlanPoint,
+  selectIKSolution,
 } from "../../math/arm_motion.mjs";
 
 const close = (a, b) => Math.abs(wrapDegrees(a - b)) < 1e-9;
@@ -53,4 +56,55 @@ test("invalid motion requests are rejected", () => {
   for (const phase of [-0.1, 1.1, NaN])
     assert.throws(() => motionAngles("both", phase, [0, 0]), RangeError);
   assert.throws(() => motionAngles("unknown", 0, [0, 0]), RangeError);
+});
+
+test("target picking inverts plan projection across viewport sizes and link geometry", () => {
+  for (const [w, h] of [
+    [800, 480],
+    [320, 400],
+    [1000, 600],
+  ]) {
+    for (const radius of [0.5, 1.75, 3]) {
+      const g = planGeometry(w, h, radius);
+      for (const [x, y] of [
+        [0, 0],
+        [1, -0.75],
+        [-radius, radius],
+      ]) {
+        const target = targetFromPlanPoint(
+          g.ox + x * g.scale,
+          g.oy - y * g.scale,
+          w,
+          h,
+          radius,
+        );
+        assert.ok(Math.abs(target[0] - x) < 1e-12);
+        assert.ok(Math.abs(target[1] - y) < 1e-12);
+      }
+    }
+  }
+});
+test("IK selection keeps the requested branch, with a singular representative fallback", () => {
+  const up = { branch: "elbow-up" },
+    down = { branch: "elbow-down" };
+  assert.equal(
+    selectIKSolution({ reachable: true, solutions: [down, up] }, "elbow-up"),
+    up,
+  );
+  assert.equal(
+    selectIKSolution({ reachable: true, solutions: [down, up] }, "elbow-down"),
+    down,
+  );
+  const singular = { branch: "singular" };
+  assert.equal(
+    selectIKSolution({ reachable: true, solutions: [singular] }, "elbow-up"),
+    singular,
+  );
+});
+test("unreachable targets never fabricate a joint solution", () => {
+  assert.equal(
+    selectIKSolution({ reachable: false, solutions: [] }, "elbow-up"),
+    null,
+  );
+  assert.equal(selectIKSolution(null, "elbow-up"), null);
 });

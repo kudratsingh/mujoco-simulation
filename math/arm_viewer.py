@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open a local interactive forward-kinematics explorer in a browser.
+"""Open a local interactive forward/inverse-kinematics explorer in a browser.
 
 From this checkout's root: .venv/bin/python math/arm_viewer.py
 Ctrl+C stops the server. This uses the Mac venv, not the ROS container.
@@ -12,11 +12,23 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 import webbrowser
 
-from planar_arm import pose_payload
+from planar_arm import ik_payload, pose_payload
 
 HTML_PATH = Path(__file__).with_suffix(".html")
 ASSETS = {f"/{name}": HTML_PATH.parent / name for name in (
     "arm_viewer.js", "arm_motion.mjs", "arm_scene.js", "arm_viewer.css")}
+
+
+def query_number(values, key, default, minimum=None, maximum=None):
+    raw = values.get(key, [str(default)])
+    if len(raw) != 1:
+        raise ValueError(f"{key} must appear once")
+    value = float(raw[0])
+    if not math.isfinite(value):
+        raise ValueError(f"{key} must be finite")
+    if minimum is not None and not minimum <= value <= maximum:
+        raise ValueError(f"{key} must be between {minimum} and {maximum}")
+    return value
 
 
 class ArmHandler(BaseHTTPRequestHandler):
@@ -40,28 +52,20 @@ class ArmHandler(BaseHTTPRequestHandler):
         elif url.path in ASSETS:
             content_type = "text/css" if url.path.endswith(".css") else "text/javascript"
             self.send_content(200, ASSETS[url.path].read_bytes(), content_type + "; charset=utf-8")
-        elif url.path == "/api/pose":
+        elif url.path in ("/api/pose", "/api/ik"):
             try:
                 values = parse_qs(url.query, keep_blank_values=True)
-                angles = []
-                for key, default in (("q1", "30"), ("q2", "60")):
-                    raw = values.get(key, [default])
-                    if len(raw) != 1:
-                        raise ValueError(f"{key} must appear once")
-                    angle = float(raw[0])
-                    if not math.isfinite(angle) or not -180 <= angle <= 180:
-                        raise ValueError(f"{key} must be between -180 and 180 degrees")
-                    angles.append(angle)
-                lengths = []
-                for key, default in (("l1", "1"), ("l2", "0.75")):
-                    raw = values.get(key, [default])
-                    if len(raw) != 1:
-                        raise ValueError(f"{key} must appear once")
-                    length = float(raw[0])
-                    if not math.isfinite(length) or not 0.25 <= length <= 1.5:
-                        raise ValueError(f"{key} must be between 0.25 and 1.5 metres")
-                    lengths.append(length)
-                payload = pose_payload(*angles, *lengths)
+                l1 = query_number(values, "l1", 1, 0.25, 1.5)
+                l2 = query_number(values, "l2", 0.75, 0.25, 1.5)
+                if url.path == "/api/ik":
+                    x = query_number(values, "x", 1)
+                    y = query_number(values, "y", 0.75)
+                    hint = query_number(values, "shoulder_hint", 0, -180, 180)
+                    payload = ik_payload(x, y, l1, l2, hint)
+                else:
+                    q1 = query_number(values, "q1", 30, -180, 180)
+                    q2 = query_number(values, "q2", 60, -180, 180)
+                    payload = pose_payload(q1, q2, l1, l2)
                 self.send_content(200, json.dumps(payload, allow_nan=False).encode(),
                                   "application/json")
             except ValueError as error:
@@ -91,7 +95,7 @@ def main():
         parser.exit(1, f"Could not start viewer: {error}. Try --port 0.\n")
     with server:
         url = f"http://127.0.0.1:{server.server_port}"
-        print(f"Two-link arm: {url}\nMove the joint sliders; Ctrl+C here stops the viewer.",
+        print(f"Two-link arm: {url}\nChoose joint angles (FK) or a hand target (IK); Ctrl+C here stops the viewer.",
               flush=True)
         if not args.no_open:
             webbrowser.open(url)

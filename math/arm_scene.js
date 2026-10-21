@@ -1,4 +1,4 @@
-import { splitWrappedPath } from "/arm_motion.mjs";
+import { planGeometry, splitWrappedPath } from "/arm_motion.mjs";
 const NS = "http://www.w3.org/2000/svg";
 const el = (svg, tag, attrs = {}, content) => {
   const n = document.createElementNS(NS, tag);
@@ -40,15 +40,16 @@ const circlePoints = (center, r, z, count = 90) =>
     return [center[0] + r * Math.cos(a), center[1] + r * Math.sin(a), z];
   });
 
-export function drawArm(svg, data, options, samples, camera) {
+export function drawArm(svg, data, options, samples, camera, ik = null) {
   const [w, h] = clear(svg);
   if (!w || !h) return;
   const radius = data.workspace_radii[1],
     extent = radius + 0.35;
   const is3d = options.view === "3d";
-  const scale =
-    Math.min((w - 65) / (2 * extent), (h - 65) / (2 * extent)) *
-    (is3d ? camera.zoom : 1.15);
+  const plan = planGeometry(w, h, radius);
+  const scale = is3d
+    ? Math.min((w - 65) / (2 * extent), (h - 65) / (2 * extent)) * camera.zoom
+    : plan.scale;
   const ox = w / 2,
     oy = is3d ? h * 0.54 : h / 2;
   const yaw = camera.yaw,
@@ -124,6 +125,33 @@ export function drawArm(svg, data, options, samples, camera) {
       samples.map((s) => project([...s.position, is3d ? 0.02 : 0])),
       { stroke: "var(--green)", "stroke-width": 2, opacity: 0.7 },
     );
+  if (ik?.reachable && options.alternate) {
+    for (const solution of ik.solutions.filter(
+      (s) => s.branch !== ik.selectedBranch,
+    )) {
+      const points = solution.pose.positions;
+      path(
+        svg,
+        points.map((p) => project([...p, z])),
+        {
+          stroke: "var(--muted)",
+          "stroke-width": 5,
+          "stroke-dasharray": "6 5",
+          opacity: 0.4,
+        },
+      );
+      const [cx, cy] = project([...points[1], z]);
+      el(svg, "circle", {
+        cx,
+        cy,
+        r: 5,
+        fill: "var(--paper)",
+        stroke: "var(--muted)",
+        opacity: 0.7,
+      });
+      label(svg, cx + 10, cy - 12, "Other elbow", { "font-size": 10 });
+    }
+  }
   if (!is3d) {
     const p = project([hand[0], hand[1], 0]);
     const px = project([hand[0], 0, 0]),
@@ -301,6 +329,68 @@ export function drawArm(svg, data, options, samples, camera) {
     label(svg, w - 14, oy - 10, "x (m)", { "text-anchor": "end" });
     label(svg, ox + 9, 19, "y (m)");
   }
+  if (ik) {
+    const [rawX, rawY] = project([...ik.target, z]);
+    const tx = Math.max(20, Math.min(w - 20, Number.isNaN(rawX) ? ox : rawX));
+    const ty = Math.max(23, Math.min(h - 20, Number.isNaN(rawY) ? oy : rawY));
+    const color = ik.reachable ? "var(--green)" : "var(--warn)";
+    const offView = tx !== rawX || ty !== rawY;
+    el(svg, "circle", {
+      cx: tx,
+      cy: ty,
+      r: 12,
+      fill: "none",
+      stroke: color,
+      "stroke-width": 1.8,
+      "stroke-dasharray": "3 3",
+    });
+    path(
+      svg,
+      [
+        [tx - 17, ty],
+        [tx - 7, ty],
+      ],
+      { stroke: color, "stroke-width": 1.5 },
+    );
+    path(
+      svg,
+      [
+        [tx + 7, ty],
+        [tx + 17, ty],
+      ],
+      { stroke: color, "stroke-width": 1.5 },
+    );
+    path(
+      svg,
+      [
+        [tx, ty - 17],
+        [tx, ty - 7],
+      ],
+      { stroke: color, "stroke-width": 1.5 },
+    );
+    path(
+      svg,
+      [
+        [tx, ty + 7],
+        [tx, ty + 17],
+      ],
+      { stroke: color, "stroke-width": 1.5 },
+    );
+    label(
+      svg,
+      tx,
+      Math.min(h - 8, ty + 30),
+      offView ? "Target off view" : ik.reachable ? "Target" : "Unreachable",
+      {
+        fill: color,
+        "font-weight": 600,
+        "text-anchor": "middle",
+        "paint-order": "stroke",
+        stroke: "var(--paper)",
+        "stroke-width": 3,
+      },
+    );
+  }
   svg.querySelector("desc").textContent =
     `Shoulder ${data.angles_deg[0].toFixed(1)} degrees, elbow ${data.angles_deg[1].toFixed(1)} degrees; hand (${hand.map((v) => v.toFixed(3)).join(", ")}) metres. ${is3d ? "3D schematic; drag to orbit." : "Plan view."}`;
 }
@@ -310,7 +400,7 @@ export function cspaceGeometry(svg) {
     h = svg.clientHeight;
   return { w, h, left: 44, right: w - 18, top: 14, bottom: h - 36 };
 }
-export function drawCspace(svg, data, samples) {
+export function drawCspace(svg, data, samples, ik = null) {
   const [w, h] = clear(svg);
   if (!w || !h) return;
   const g = cspaceGeometry(svg),
@@ -355,6 +445,29 @@ export function drawCspace(svg, data, samples) {
       "stroke-width": 1.8,
       opacity: 0.5,
     });
+  if (ik?.infinite) {
+    for (const q2 of [-180, 180])
+      path(svg, [map([-180, q2]), map([180, q2])], {
+        stroke: "var(--orange)",
+        "stroke-width": 3,
+        "stroke-dasharray": "5 4",
+      });
+  }
+  if (ik?.reachable) {
+    for (const s of ik.solutions.filter(
+      (s) => s.branch !== ik.selectedBranch,
+    )) {
+      const [cx, cy] = map(s.pose.angles_deg);
+      el(svg, "circle", {
+        cx,
+        cy,
+        r: 6,
+        fill: "var(--paper)",
+        stroke: "var(--orange)",
+        "stroke-width": 2,
+      });
+    }
+  }
   const [x, y] = map(data.angles_deg);
   path(
     svg,
