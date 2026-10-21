@@ -79,6 +79,42 @@ class PlanarArm:
         """Minimum/maximum hand distance from the base, ignoring collisions."""
         return abs(self.l1 - self.l2), self.l1 + self.l2
 
+    def jacobian(self, q1: float, q2: float) -> np.ndarray:
+        """World xy hand-velocity Jacobian: v [m/s] = J @ qdot [rad/s].
+
+        Each column is the hand velocity from unit speed at one joint,
+        holding the other joint fixed. This is position-only, not a 6D twist.
+        """
+        self.joint_positions(q1, q2)  # same angle validation as FK
+        s1, c1 = math.sin(q1), math.cos(q1)
+        s12, c12 = math.sin(q1 + q2), math.cos(q1 + q2)
+        return np.array([
+            [-self.l1 * s1 - self.l2 * s12, -self.l2 * s12],
+            [ self.l1 * c1 + self.l2 * c12,  self.l2 * c12],
+        ])
+
+    def differential_kinematics(self, q1: float, q2: float) -> dict:
+        """Jacobian and singular values for a unit Euclidean joint-rate ball.
+
+        A rank tolerance handles sin(pi) roundoff. condition=None means the
+        mathematical condition number is infinite (JSON has no infinity).
+        A large finite condition is a teaching warning, not a rank change.
+        """
+        J = self.jacobian(q1, q2)
+        U, sigma, _ = np.linalg.svd(J)
+        tolerance = 2 * np.finfo(float).eps * sigma[0]
+        singular = bool(sigma[1] <= tolerance)
+        return {
+            "jacobian": J.tolist(),
+            "determinant": float(np.linalg.det(J)),
+            "singular_values": sigma.tolist(),
+            "principal_directions": U.T.tolist(),
+            "rank": 1 if singular else 2,
+            "singular": singular,
+            "condition": None if singular else float(sigma[0] / sigma[1]),
+            "manipulability": float(sigma[0] * sigma[1]),
+        }
+
     def inverse_kinematics(self, x: float, y: float, shoulder_hint: float = 0.0) -> IKResult:
         """Solve hand POSITION, leaving heading determined by the joint angles.
 
@@ -135,6 +171,7 @@ def pose_payload(q1_deg: float, q2_deg: float, l1: float = 1.0, l2: float = 0.75
     positions = arm.joint_positions(q1, q2)
     transforms = arm.transform_chain(q1, q2)
     return {
+        "differential": arm.differential_kinematics(q1, q2),
         "angles_deg": [q1_deg, q2_deg],
         "angles_rad": [q1, q2],
         "lengths": [arm.l1, arm.l2],

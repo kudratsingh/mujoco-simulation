@@ -800,3 +800,80 @@ fieldset:disabled input {
 #motion-controls:disabled {
   opacity: 0.45;
 }
+
+.differential-panel {
+  margin-top: 20px;
+}
+.differential-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.3fr) minmax(
+      200px,
+      0.9fr
+    );
+  gap: 28px;
+  padding: 0 22px 22px;
+}
+.velocity-controls .control-title {
+  margin-top: 12px;
+}
+.velocity-controls output {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.velocity-controls input[type="range"] {
+  width: 100%;
+}
+.velocity-readout {
+  margin: 16px 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.velocity-chart {
+  min-width: 0;
+}
+#velocity-plot {
+  width: 100%;
+  height: 310px;
+  display: block;
+}
+.velocity-chart .legend {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.jacobian-metrics {
+  font-size: 12px;
+  min-width: 0;
+}
+.jacobian-metrics .matrix {
+  font-size: 14px;
+}
+.jacobian-metrics .readout {
+  gap: 12px;
+  margin-top: 12px;
+}
+.jacobian-metrics strong {
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .differential-grid {
+    grid-template-columns: 1fr 1.2fr;
+  }
+  .jacobian-metrics {
+    grid-column: 1/-1;
+    max-width: 600px;
+  }
+}
+@media (max-width: 650px) {
+  .differential-grid {
+    grid-template-columns: 1fr;
+  }
+  .differential-panel .panel-heading {
+    align-items: flex-start;
+  }
+  .differential-panel .mini-tag {
+    display: none;
+  }
+}

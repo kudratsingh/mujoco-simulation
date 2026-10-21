@@ -73,3 +73,12 @@ def test_browser_assets_are_served_with_correct_type(viewer_url, asset):
         assert response.status == 200
         assert response.headers["Content-Type"].startswith("text/css" if asset.endswith(".css") else "text/javascript")
         assert response.read()
+
+
+def test_pose_endpoint_exposes_json_safe_jacobian_at_singularity(viewer_url):
+    with urlopen(viewer_url + "/api/pose?q1=0&q2=0", timeout=3) as response:
+        payload = json.load(response)
+    d = payload["differential"]
+    assert d["jacobian"] == [[0, 0], [1.75, 0.75]]
+    assert d["rank"] == 1 and d["singular"]
+    assert d["condition"] is None

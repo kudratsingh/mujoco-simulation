@@ -7,6 +7,8 @@ import {
   planGeometry,
   targetFromPlanPoint,
   selectIKSolution,
+  jointVelocity,
+  velocityEllipse,
 } from "../../math/arm_motion.mjs";
 
 const close = (a, b) => Math.abs(wrapDegrees(a - b)) < 1e-9;
@@ -107,4 +109,46 @@ test("unreachable targets never fabricate a joint solution", () => {
     null,
   );
   assert.equal(selectIKSolution(null, "elbow-up"), null);
+});
+
+test("joint contributions sum with correct signs and zero rates give zero velocity", () => {
+  const J = [
+    [-0.75, -0.75],
+    [1, 0],
+  ];
+  assert.deepEqual(jointVelocity(J, [1, -1]).total, [0, 1]);
+  assert.ok(jointVelocity(J, [0, 0]).total.every((v) => v === 0));
+  const v = jointVelocity(J, [0.6, 0.8]);
+  assert.ok(Math.abs(v.rateNorm - 1) < 1e-12);
+  assert.ok(Math.abs(v.total[0] + 1.05) < 1e-12);
+  assert.equal(v.total[1], 0.6);
+});
+test("ellipse is the image of a unit-rate circle, not joint slider box limits", () => {
+  const points = velocityEllipse([
+    [2, 0],
+    [0, 1],
+  ]);
+  assert.equal(points.length, 129);
+  for (const [x, y] of points)
+    assert.ok(Math.abs((x * x) / 4 + y * y - 1) < 1e-12);
+  assert.ok(
+    Math.hypot(
+      points[0][0] - points.at(-1)[0],
+      points[0][1] - points.at(-1)[1],
+    ) < 1e-12,
+  );
+});
+test("singular ellipse collapses to one direction including the equal-link folded case", () => {
+  for (const J of [
+    [
+      [0, 0],
+      [1.75, 0.75],
+    ],
+    [
+      [0, 0],
+      [0, -1],
+    ],
+  ]) {
+    for (const [x] of velocityEllipse(J)) assert.ok(x === 0);
+  }
 });

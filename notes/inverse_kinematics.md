@@ -89,5 +89,5 @@ On October 21, 2026 the full Python suite passed **110 tests** and the JavaScrip
 suite passed **8 tests**. Browser checks covered branch switching with an unchanged
 hand position, central-hole feedback and the equal-link folded family.
 
-Next: derive the Jacobian to relate joint velocities to hand velocity, and use
-it to visualize singularities and local motion directions.
+The next artifact is now implemented: [the Jacobian velocity lab](jacobian.md)
+relates joint speeds to hand velocity and visualizes local motion directions.

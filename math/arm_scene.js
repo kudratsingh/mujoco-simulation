@@ -1,4 +1,8 @@
-import { planGeometry, splitWrappedPath } from "/arm_motion.mjs";
+import {
+  planGeometry,
+  splitWrappedPath,
+  velocityEllipse,
+} from "/arm_motion.mjs";
 const NS = "http://www.w3.org/2000/svg";
 const el = (svg, tag, attrs = {}, content) => {
   const n = document.createElementNS(NS, tag);
@@ -391,6 +395,27 @@ export function drawArm(svg, data, options, samples, camera, ik = null) {
       },
     );
   }
+  if (options.velocity) {
+    const start = project([...hand, z]);
+    const end = (v) => project([hand[0] + 0.2 * v[0], hand[1] + 0.2 * v[1], z]);
+    options.velocity.contributions.forEach((v, i) =>
+      arrow(
+        svg,
+        start,
+        end(v),
+        i === 0 ? "var(--blue)" : "var(--orange)",
+        true,
+      ),
+    );
+    arrow(svg, start, end(options.velocity.total), "var(--green)");
+    const tip = end(options.velocity.total);
+    label(svg, tip[0] + 10, tip[1] - 10, "v · 0.20 s", {
+      fill: "var(--green)",
+      "paint-order": "stroke",
+      stroke: "var(--paper)",
+      "stroke-width": 3,
+    });
+  }
   svg.querySelector("desc").textContent =
     `Shoulder ${data.angles_deg[0].toFixed(1)} degrees, elbow ${data.angles_deg[1].toFixed(1)} degrees; hand (${hand.map((v) => v.toFixed(3)).join(", ")}) metres. ${is3d ? "3D schematic; drag to orbit." : "Plan view."}`;
 }
@@ -549,4 +574,101 @@ export function drawHistory(svg, data, samples) {
     transform: `rotate(-90 12 ${(g.top + g.bottom) / 2})`,
     "text-anchor": "middle",
   });
+}
+
+function arrow(svg, a, b, color, dashed = false) {
+  const dx = b[0] - a[0],
+    dy = b[1] - a[1],
+    length = Math.hypot(dx, dy);
+  if (length < 0.5) {
+    el(svg, "circle", { cx: a[0], cy: a[1], r: 3, fill: color });
+    return;
+  }
+  path(svg, [a, b], {
+    stroke: color,
+    "stroke-width": dashed ? 1.8 : 2.8,
+    ...(dashed ? { "stroke-dasharray": "4 4" } : {}),
+  });
+  const ux = dx / length,
+    uy = dy / length,
+    head = Math.min(9, length * 0.4);
+  path(
+    svg,
+    [
+      [
+        b[0] - head * ux + head * 0.45 * uy,
+        b[1] - head * uy - head * 0.45 * ux,
+      ],
+      b,
+      [
+        b[0] - head * ux - head * 0.45 * uy,
+        b[1] - head * uy + head * 0.45 * ux,
+      ],
+    ],
+    { stroke: color, "stroke-width": dashed ? 1.8 : 2.8 },
+  );
+}
+
+export function drawVelocity(svg, d, velocity) {
+  const [w, h] = clear(svg);
+  if (!w || !h) return;
+  // Keep a stable range for all rate choices at this pose: each slider is
+  // bounded to ±1.5, while the ellipse uses a combined unit-rate norm.
+  const J = d.jacobian;
+  const extent =
+    Math.max(
+      0.5,
+      1.5 * (Math.hypot(J[0][0], J[1][0]) + Math.hypot(J[0][1], J[1][1])),
+    ) * 1.12;
+  const scale = Math.min(w - 70, h - 62) / (2 * extent);
+  const map = (v) => [w / 2 + scale * v[0], h / 2 - scale * v[1]];
+  const origin = map([0, 0]);
+  const tick = extent > 2 ? 1 : 0.5;
+  for (
+    let v = -Math.floor(extent / tick) * tick;
+    v <= extent + 1e-8;
+    v += tick
+  ) {
+    path(svg, [map([v, -extent]), map([v, extent])], {
+      stroke: v === 0 ? "var(--muted)" : "var(--grid)",
+    });
+    path(svg, [map([-extent, v]), map([extent, v])], {
+      stroke: v === 0 ? "var(--muted)" : "var(--grid)",
+    });
+    if (v !== 0 && (w > 330 || Number.isInteger(v))) {
+      const [x, y] = map([v, 0]);
+      label(svg, x, y + 16, String(v), { "text-anchor": "middle" });
+      const [a, b] = map([0, v]);
+      label(svg, a - 8, b + 4, String(v), { "text-anchor": "end" });
+    }
+  }
+  path(svg, velocityEllipse(J).map(map), {
+    stroke: "var(--blue)",
+    "stroke-width": d.singular ? 4 : 2,
+    fill: d.singular ? "none" : "var(--reach)",
+    "fill-opacity": 0.4,
+  });
+  d.principal_directions.forEach((axis, i) => {
+    const v = axis.map((x) => x * d.singular_values[i]);
+    path(svg, [map(v.map((x) => -x)), map(v)], {
+      stroke: "var(--muted)",
+      "stroke-dasharray": "3 4",
+      opacity: 0.7,
+    });
+  });
+  velocity.contributions.forEach((v, i) => {
+    arrow(svg, origin, map(v), i === 0 ? "var(--blue)" : "var(--orange)", true);
+    path(svg, [map(v), map(velocity.total)], {
+      stroke: i === 0 ? "var(--orange)" : "var(--blue)",
+      "stroke-dasharray": "3 4",
+      opacity: 0.4,
+    });
+  });
+  arrow(svg, origin, map(velocity.total), "var(--green)");
+  const tip = map(velocity.total);
+  el(svg, "circle", { cx: tip[0], cy: tip[1], r: 4, fill: "var(--green)" });
+  label(svg, w - 10, h / 2 - 10, "vₓ (m/s)", { "text-anchor": "end" });
+  label(svg, w / 2 + 9, 16, "vᵧ (m/s)");
+  svg.querySelector("desc").textContent =
+    `Selected hand velocity (${velocity.total.map((v) => v.toFixed(3)).join(", ")}) metres per second. ${d.singular ? "Singular: the velocity ellipse collapses to a line." : "Ellipse maps the unit joint-rate circle through the Jacobian."}`;
 }

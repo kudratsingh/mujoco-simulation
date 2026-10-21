@@ -86,6 +86,9 @@
                 ><input type="checkbox" id="show-trail" checked />Hand
                 trail</label
               >
+              <a class="text-button" href="#velocity-lab"
+                >Velocity &amp; singularities ↓</a
+              >
               <button type="button" class="text-button" id="clear-trail">
                 Clear history
               </button>
@@ -378,6 +381,143 @@
           </div>
         </aside>
       </div>
+      <section
+        class="panel differential-panel"
+        id="velocity-lab"
+        aria-label="Jacobian velocity lab"
+      >
+        <div class="panel-heading">
+          <div>
+            <h2>Jacobian · from joint speed to hand velocity</h2>
+            <p>
+              Preview instantaneous velocity at the current pose. These rates do
+              not move the arm.
+            </p>
+          </div>
+          <span class="mini-tag">q̇ → v = J q̇</span>
+        </div>
+        <div class="differential-grid">
+          <div class="velocity-controls">
+            <div class="control-title">
+              <label for="dq1">Shoulder speed · q̇₁</label
+              ><output id="dq1-value">0.60 rad/s</output>
+            </div>
+            <input
+              id="dq1"
+              type="range"
+              min="-1.5"
+              max="1.5"
+              step="0.01"
+              value="0.6"
+              aria-label="Shoulder speed in radians per second"
+            />
+            <div class="control-title">
+              <label for="dq2">Elbow speed · q̇₂</label
+              ><output id="dq2-value">0.00 rad/s</output>
+            </div>
+            <input
+              id="dq2"
+              type="range"
+              min="-1.5"
+              max="1.5"
+              step="0.01"
+              value="0"
+              aria-label="Elbow speed in radians per second"
+            />
+            <div class="presets" aria-label="Velocity examples">
+              <button type="button" data-rate="1,0">Shoulder only</button>
+              <button type="button" data-rate="0,1">Elbow only</button>
+              <button type="button" data-rate="1,-1">Oppose joints</button>
+              <button type="button" data-rate="0,0">Zero speeds</button>
+            </div>
+            <label class="alternate-toggle"
+              ><input id="show-velocity" type="checkbox" checked />Show
+              hand-velocity arrows on arm</label
+            >
+            <p class="help">
+              Arm arrows use a 0.20 s scale: 1 m/s draws 0.20 m. They show
+              velocity, not a predicted path.
+            </p>
+            <div class="velocity-readout" id="velocity-result" role="status">
+              Loading velocity…
+            </div>
+            <div
+              id="jacobian-status"
+              class="reach-status"
+              data-state="pending"
+              role="status"
+            >
+              Loading Jacobian…
+            </div>
+            <p id="jacobian-explanation" class="help"></p>
+            <div class="target-examples" aria-label="Singularity examples">
+              <button type="button" data-jacobian-pose="0,90">Bent</button>
+              <button type="button" data-jacobian-pose="0,5">
+                Near straight
+              </button>
+              <button type="button" data-jacobian-pose="0,0">Straight</button>
+              <button type="button" data-jacobian-pose="0,180">Folded</button>
+            </div>
+            <p class="help">
+              Pose examples switch to FK mode and pause playback.
+            </p>
+          </div>
+          <div class="velocity-chart">
+            <h2>Hand-velocity space · m/s</h2>
+            <svg
+              id="velocity-plot"
+              role="img"
+              aria-labelledby="velocity-title velocity-description"
+            >
+              <title id="velocity-title">
+                Manipulability ellipse and selected hand velocity
+              </title>
+              <desc id="velocity-description">
+                Joint rates map to hand velocity through the Jacobian.
+              </desc>
+            </svg>
+            <div class="legend compact">
+              <span><i class="swatch first"></i>Shoulder contribution</span
+              ><span><i class="swatch second"></i>Elbow contribution</span
+              ><span><i class="swatch trail"></i>Total velocity</span>
+            </div>
+            <p class="chart-caption">
+              Ellipse: all J q̇ with ‖q̇‖ = 1 rad/s. Selected speeds may exceed
+              this combined norm.
+            </p>
+          </div>
+          <div class="jacobian-metrics">
+            <div class="matrix-label">J(q) · world xy · metres/radian</div>
+            <pre class="matrix" id="jacobian-matrix"></pre>
+            <p class="help">
+              Rows: x, y. Columns: shoulder, elbow. A column gives hand velocity
+              from 1 rad/s at that joint.
+            </p>
+            <div class="readout">
+              <span>det(J)</span><strong id="jacobian-det">—</strong>
+            </div>
+            <div class="readout">
+              <span>Singular values σ₁ / σ₂</span
+              ><strong id="jacobian-sigma">—</strong>
+            </div>
+            <div class="readout">
+              <span>Condition number σ₁ / σ₂</span
+              ><strong id="jacobian-condition">—</strong>
+            </div>
+            <div class="readout">
+              <span>Manipulability |det(J)|</span
+              ><strong id="jacobian-manipulability">—</strong>
+            </div>
+            <div class="readout">
+              <span>Selected ‖q̇‖</span><strong id="joint-speed-norm">—</strong>
+            </div>
+            <p class="help">
+              The condition number becomes infinite at rank loss. The “near
+              singular” warning starts above 30; it is a teaching threshold.
+            </p>
+          </div>
+        </div>
+      </section>
       <section
         class="panel math-panel"
         aria-label="Forward kinematics calculation"

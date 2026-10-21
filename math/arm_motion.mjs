@@ -61,3 +61,24 @@ export function selectIKSolution(result, preferredBranch) {
     null
   );
 }
+
+// J comes from Python; rates are radians/second, output is metres/second.
+export function jointVelocity(jacobian, rates) {
+  const contributions = rates.map((rate, i) =>
+    jacobian.map((row) => row[i] * rate),
+  );
+  const total = contributions[0].map((v, i) => v + contributions[1][i]);
+  return {
+    contributions,
+    total,
+    speed: Math.hypot(...total),
+    rateNorm: Math.hypot(...rates),
+  };
+}
+export function velocityEllipse(jacobian, count = 128) {
+  // Image of the UNIT EUCLIDEAN joint-rate circle, not per-joint box limits.
+  return Array.from({ length: count + 1 }, (_, i) => {
+    const t = (2 * Math.PI * i) / count;
+    return jointVelocity(jacobian, [Math.cos(t), Math.sin(t)]).total;
+  });
+}

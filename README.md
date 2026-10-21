@@ -24,7 +24,10 @@ the live transform chain connect the geometry to the Week-1 concepts.
 See [the arm walkthrough](notes/planar_arm.md) for the derivation, presets and
 validation. Choose **Hand target · IK** to click a target, compare both elbow
 solutions and explore reach limits. See [the IK walkthrough](notes/inverse_kinematics.md).
-Jacobian analysis and arm control come next. Use the Mac venv for this viewer.
+The **Jacobian velocity lab** maps joint speeds to hand velocity, draws the
+manipulability ellipse, and shows rank loss at straight/folded configurations.
+See [the Jacobian walkthrough](notes/jacobian.md). Arm control comes next.
+Use the Mac venv for this viewer.
 
 ## Week 1 tracks
 
@@ -66,6 +69,8 @@ What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
   inverses, composition, the worked world/base/camera example.
 - `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
   and independent agreement with the MuJoCo two-link model.
+- `test_jacobian.py` - analytic derivatives vs finite differences and MuJoCo,
+  determinant, singular values, rank loss and local velocity prediction.
 - `test_inverse_kinematics.py` and `test_ik_api.py` - both elbow solutions, reach
   boundaries, singular families, FK round trips, MuJoCo comparisons and IK HTTP validation.
 - `test_arm_viewer.py` - the browser viewer's localhost HTTP interface and

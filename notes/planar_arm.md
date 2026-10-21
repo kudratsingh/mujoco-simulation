@@ -187,7 +187,7 @@ The browser-helper tests use Node 22 or newer; CI runs them on Node 22. The
 viewer itself only needs Python, the existing NumPy dependency, and a browser.
 
 The viewer sets angles directly and calculates geometry. Position inverse kinematics is now available through Hand target · IK; see
-[the IK walkthrough](inverse_kinematics.md). Torque control and Jacobians are later Week-2 steps. Opening the browser
+[the IK walkthrough](inverse_kinematics.md). The [Jacobian lab](jacobian.md) adds differential kinematics; torque control is a later step. Opening the browser
 does not start a dynamics rollout or ROS node.
 
 ## Validation

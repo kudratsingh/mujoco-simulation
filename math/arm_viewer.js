@@ -2,11 +2,13 @@ import {
   motionAngles,
   targetFromPlanPoint,
   selectIKSolution,
+  jointVelocity,
 } from "/arm_motion.mjs";
 import {
   drawArm,
   drawCspace,
   drawHistory,
+  drawVelocity,
   cspaceGeometry,
 } from "/arm_scene.js";
 const $ = (id) => document.getElementById(id);
@@ -42,6 +44,11 @@ function draw() {
   if (!current) return;
   for (const name of ["workspace", "frames", "angles", "trail", "alternate"])
     options[name] = $("show-" + name).checked;
+  const rates = [Number($("dq1").value), Number($("dq2").value)];
+  const velocity = jointVelocity(current.differential.jacobian, rates);
+  options.velocity = $("show-velocity").checked ? velocity : null;
+  updateDifferential(current.differential, velocity, rates);
+  drawVelocity($("velocity-plot"), current.differential, velocity);
   drawArm(
     $("plot"),
     current,
@@ -566,3 +573,62 @@ $("show-alternate").addEventListener("change", () => {
   options.alternate = $("show-alternate").checked;
   draw();
 });
+
+function updateDifferential(d, velocity, rates) {
+  rates.forEach((q, i) => {
+    $("dq" + (i + 1) + "-value").textContent = fixed(q, 2) + " rad/s";
+  });
+  $("velocity-result").textContent =
+    `v = ${pair(velocity.total)} m/s · speed ${fixed(velocity.speed)} m/s`;
+  $("jacobian-matrix").textContent = d.jacobian
+    .map((row) => row.map((v) => fixed(v, 3).padStart(7)).join(" "))
+    .join("\n");
+  $("jacobian-det").textContent = fixed(d.determinant, 4);
+  $("jacobian-sigma").textContent = d.singular_values
+    .map((v) => fixed(v, 4))
+    .join(" / ");
+  $("jacobian-condition").textContent =
+    d.condition === null
+      ? "∞"
+      : d.condition > 1e5
+        ? d.condition.toExponential(2)
+        : fixed(d.condition, 2);
+  $("jacobian-manipulability").textContent = d.manipulability.toExponential(2);
+  $("joint-speed-norm").textContent = fixed(velocity.rateNorm, 2) + " rad/s";
+  const near = !d.singular && d.condition > 30;
+  $("jacobian-status").dataset.state =
+    d.singular || near ? "singular" : "reachable";
+  $("jacobian-status").textContent = d.singular
+    ? "Singular · only one velocity direction"
+    : near
+      ? "Near singular · thin velocity ellipse"
+      : "Full rank · two velocity directions";
+  $("jacobian-explanation").textContent = d.singular
+    ? "The Jacobian has rank 1. Some instantaneous hand directions are unavailable, even though both joints can still rotate."
+    : near
+      ? "Both directions remain available, but one produces very little hand speed for the same combined joint speed."
+      : "The two Jacobian columns span the plane. Change a joint angle and watch the available velocity directions change.";
+}
+for (const id of ["dq1", "dq2"])
+  $(id).addEventListener("input", () => {
+    pauseMotion();
+    draw();
+  });
+$("show-velocity").addEventListener("change", draw);
+for (const button of document.querySelectorAll("[data-rate]"))
+  button.addEventListener("click", () => {
+    pauseMotion();
+    button.dataset.rate.split(",").forEach((q, i) => {
+      $("dq" + (i + 1)).value = q;
+    });
+    draw();
+  });
+for (const button of document.querySelectorAll("[data-jacobian-pose]"))
+  button.addEventListener("click", () => {
+    if (mode === "ik") setMode("fk");
+    setAngles(button.dataset.jacobianPose.split(",").map(Number));
+    samples = [];
+    origin = performance.now();
+    manualChange();
+  });
+new ResizeObserver(draw).observe($("velocity-plot"));
