@@ -14,6 +14,7 @@ import webbrowser
 
 from planar_arm import ik_payload, pose_payload
 from resolved_rate import control_payload
+from arm_dynamics import physics_payload
 
 HTML_PATH = Path(__file__).with_suffix(".html")
 ASSETS = {f"/{name}": HTML_PATH.parent / name for name in (
@@ -89,6 +90,27 @@ class ArmHandler(BaseHTTPRequestHandler):
             self.send_content(204, b"", "image/x-icon")
         else:
             self.send_content(404, b"Not found", "text/plain; charset=utf-8")
+
+    def do_POST(self):
+        if urlsplit(self.path).path != "/api/physics":
+            self.send_content(404, b"Not found", "text/plain")
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 8192:
+                raise ValueError("Request body must contain 1 to 8192 bytes")
+            body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict) or set(body) - {"state", "target", "settings", "dt", "kick"}:
+                raise ValueError("Invalid physics request fields")
+            settings = body.get("settings", {})
+            allowed = {"l1", "l2", "kp", "kd", "torque_limit", "gravity", "compensate", "gain", "damping", "method"}
+            if not isinstance(settings, dict) or set(settings)-allowed:
+                raise ValueError("Invalid physics settings")
+            result = physics_payload(body.get("state", {}), body.get("target", [1.1, .45]),
+                                     dt=body.get("dt", .04), kick=body.get("kick", 0), **settings)
+            self.send_content(200, json.dumps(result, allow_nan=False).encode(), "application/json")
+        except (ValueError, TypeError, OverflowError) as error:
+            self.send_content(400, json.dumps({"error": str(error)}).encode(), "application/json")
 
     def log_message(self, format, *args):
         # Slider updates produce many requests. Keep the user's terminal quiet.

@@ -10,6 +10,7 @@ import {
   drawHistory,
   drawVelocity,
   drawControlHistory,
+  drawDynamicsHistory,
   cspaceGeometry,
 } from "/arm_scene.js";
 const $ = (id) => document.getElementById(id);
@@ -50,6 +51,8 @@ const controller = {
   initial: [30, 60],
   limit: false,
 };
+const physics = { state: null, latest: null, kick: 0 };
+const isTracking = () => mode === "control" || mode === "physics";
 const angles = () => [Number($("q1").value), Number($("q2").value)];
 
 function draw() {
@@ -57,16 +60,20 @@ function draw() {
   for (const name of ["workspace", "frames", "angles", "trail", "alternate"])
     options[name] = $("show-" + name).checked;
   const rates =
-    mode === "control" && controller.feedback
+    isTracking() && controller.feedback
       ? controller.feedback.joint_rates
       : [Number($("dq1").value), Number($("dq2").value)];
   const velocity = jointVelocity(current.differential.jacobian, rates);
   options.velocity = $("show-velocity").checked ? velocity : null;
-  options.requestedVelocity =
-    mode === "control" ? controller.feedback?.requested_velocity : null;
+  options.requestedVelocity = isTracking()
+    ? controller.feedback?.requested_velocity
+    : null;
   updateDifferential(current.differential, velocity, rates);
   drawControlHistory($("control-history"), controller.history);
   renderControl();
+  renderPhysics();
+  options.referencePose =
+    mode === "physics" ? physics.latest?.reference_pose : null;
   drawVelocity(
     $("velocity-plot"),
     current.differential,
@@ -81,7 +88,7 @@ function draw() {
     camera,
     mode === "ik"
       ? ikResult
-      : mode === "control" && controller.feedback
+      : isTracking() && controller.feedback
         ? {
             target: controller.feedback.target,
             reachable: controller.feedback.reachable,
@@ -259,6 +266,8 @@ for (const name of ["l1", "l2"]) {
     origin = performance.now();
     ikResult = null;
     controller.feedback = null;
+    physics.state = null;
+    physics.latest = null;
     const updated = await update();
     if (updated && mode !== "fk") solveTarget();
   });
@@ -432,22 +441,42 @@ function cancelRequest() {
   pending?.abort();
   busy = false;
 }
-function setMode(next) {
+function setMode(next, restart = false) {
+  if (next === mode && !restart) return;
   cancelRequest();
   pauseMotion();
   mode = next;
   const inverse = mode === "ik",
-    tracking = mode === "control";
-  $("mode-control").setAttribute("aria-pressed", String(tracking));
+    tracking = isTracking();
+  $("mode-control").setAttribute("aria-pressed", String(mode === "control"));
+  $("mode-physics").setAttribute("aria-pressed", String(mode === "physics"));
+  $("physics-settings").hidden = mode !== "physics";
+  $("physics-lab").hidden = mode !== "physics";
+  $("physics-kick").hidden = mode !== "physics";
+  $("control-stop-description").textContent =
+    mode === "physics"
+      ? "Physics continues while holding or at a local stall. It pauses on an unreachable target or after 15 simulated seconds. Editing target, geometry or settings pauses the experiment."
+      : "Each run stops when reached, stalled, unreachable, or after 15 simulated seconds. Changing target, geometry, settings or mode pauses the run.";
+  $("control-loop-description").textContent =
+    mode === "physics"
+      ? "MuJoCo: 2 ms physics · 50 Hz outer control · 500 Hz joint PD · torque-limited motors"
+      : "Kinematic feedback at 0.04 s/step · joint limit ±1.5 rad/s · no torque dynamics.";
+  physics.state = null;
+  physics.latest = null;
+  physics.kick = 0;
   $("analytic-controls").hidden = !inverse;
   $("control-buttons").hidden = !tracking;
   $("preview-rates").disabled = tracking;
+  $("preview-rates").hidden = mode === "physics";
   $("target-error-label").textContent = tracking
     ? "Distance to target"
     : "FK position error";
-  $("velocity-explanation").textContent = tracking
-    ? "Controller joint rates and requested/achieved velocity at the displayed pose."
-    : "Preview instantaneous velocity at the current pose. These rates do not move the arm.";
+  $("velocity-explanation").textContent =
+    mode === "physics"
+      ? "Measured MuJoCo joint speeds determine actual hand velocity; red arrows show the requested velocity."
+      : tracking
+        ? "Controller joint rates and requested/achieved velocity at the displayed pose."
+        : "Preview instantaneous velocity at the current pose. These rates do not move the arm.";
   controller.feedback = null;
   for (const id of ["target-x", "target-y"]) {
     if (tracking) {
@@ -469,11 +498,14 @@ function setMode(next) {
   $("fk-presets").hidden = mode !== "fk";
   $("motion-controls").hidden = mode !== "fk";
   $("plot").dataset.control = mode;
-  $("mode-label").textContent = tracking
-    ? "Closed-loop control / Target → joint rates → motion"
-    : inverse
-      ? "Inverse kinematics / Target → joint angles"
-      : "Forward kinematics / Angles → hand pose";
+  $("mode-label").textContent =
+    mode === "physics"
+      ? "MuJoCo physics / Target → PD → torque → measured state"
+      : tracking
+        ? "Closed-loop control / Target → joint rates → motion"
+        : inverse
+          ? "Inverse kinematics / Target → joint angles"
+          : "Forward kinematics / Angles → hand pose";
   phase = 0;
   setProgress();
   motionBase = angles();
@@ -541,7 +573,7 @@ function renderIKControls() {
     : "Up/down are the left/right sides of the directed base-to-target line, not screen height.";
 }
 async function solveTarget() {
-  if (mode === "control") {
+  if (isTracking()) {
     refreshControl();
     return;
   }
@@ -641,7 +673,7 @@ $("show-alternate").addEventListener("change", () => {
 
 function updateDifferential(d, velocity, rates) {
   rates.forEach((q, i) => {
-    if (mode === "control") $("dq" + (i + 1)).value = String(q);
+    if (isTracking()) $("dq" + (i + 1)).value = String(q);
     $("dq" + (i + 1) + "-value").textContent = fixed(q, 2) + " rad/s";
   });
   $("velocity-result").textContent =
@@ -734,11 +766,12 @@ function refreshControl() {
     return;
   }
   resetControlHistory();
+  if (physics.state) physics.state.hold_time = 0;
   controller.feedback = null;
   controlStep(0);
 }
 async function controlStep(dt) {
-  if (mode !== "control" || !validTarget()) return false;
+  if (!isTracking() || !validTarget()) return false;
   const request = ++version;
   pending?.abort();
   pending = new AbortController();
@@ -758,13 +791,49 @@ async function controlStep(dt) {
     damping: $("control-damping").value,
   });
   try {
-    const response = await fetch(`/api/control?${params}`, {
-      signal: pending.signal,
-    });
+    let response;
+    if (mode === "physics") {
+      const kick = physics.kick;
+      physics.kick = 0;
+      const state = physics.state ?? {
+        qpos: angles().map((q) => (q * Math.PI) / 180),
+        qvel: [0, 0],
+      };
+      response = await fetch("/api/physics", {
+        method: "POST",
+        signal: pending.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          state,
+          target: [Number($("target-x").value), Number($("target-y").value)],
+          dt,
+          kick,
+          settings: {
+            l1: Number($("l1").value),
+            l2: Number($("l2").value),
+            kp: Number($("physics-kp").value),
+            kd: Number($("physics-kd").value),
+            torque_limit: Number($("physics-limit").value),
+            gravity: $("physics-gravity").checked,
+            compensate: $("physics-compensate").checked,
+            gain: Number($("control-gain").value),
+            damping: Number($("control-damping").value),
+            method: $("control-method").value,
+          },
+        }),
+      });
+    } else
+      response = await fetch(`/api/control?${params}`, {
+        signal: pending.signal,
+      });
     if (!response.ok) throw new Error("Controller unavailable");
     const result = await response.json();
-    if (request !== version || mode !== "control") return false;
+    if (request !== version || !isTracking()) return false;
     controller.feedback = result.command;
+    if (result.state) {
+      physics.state = result.state;
+      physics.latest = result;
+    }
     if (!controller.history.length)
       controller.history.push({
         time: controller.time,
@@ -775,12 +844,20 @@ async function controlStep(dt) {
       controller.history.push({
         time: controller.time,
         error: result.command.error_norm,
+        dynamics: result.dynamics,
+        kick: result.dynamics?.kick,
       });
     if (controller.history.length > 600) controller.history.shift();
-    if (result.command.status !== "tracking" || controller.time >= 15) {
+    if (
+      (mode === "physics"
+        ? result.command.status === "unreachable"
+        : result.command.status !== "tracking") ||
+      controller.time >= 15
+    ) {
       controller.running = false;
       controller.limit =
-        controller.time >= 15 && result.command.status === "tracking";
+        controller.time >= 15 &&
+        (mode === "physics" || result.command.status === "tracking");
     }
     applyPose(result.pose);
     return true;
@@ -836,21 +913,35 @@ function renderControl() {
   $("control-raw-peak").textContent = c
     ? fixed(Math.max(...c.raw_joint_rates.map(Math.abs)), 2) + " rad/s"
     : "—";
-  const canStep = !!c && c.status === "tracking" && !controller.limit;
+  const canStep =
+    !!c &&
+    (mode === "physics"
+      ? c.status !== "unreachable"
+      : c.status === "tracking") &&
+    !controller.limit;
   $("control-run").disabled = !controller.running && !canStep;
   $("control-step").disabled = !canStep;
-  if (mode !== "control" || !c) return;
+  if (!isTracking() || !c) return;
   const titles = {
     tracking: controller.limit
       ? "Time limit · residual error remains"
       : controller.running
         ? "Tracking target"
         : "Paused · ready to track",
+    holding: "Holding target under physics",
+    settling: "Settling · braking joint motion",
+    local_stall: "Local Jacobian stall · physics still active",
     reached: "Target reached",
     stalled: "Stalled at singularity",
     unreachable: "Unreachable target",
   };
   const explanations = {
+    holding:
+      "Position error and joint speed stayed small for 0.3 s. Physics continues; try the elbow kick to test recovery.",
+    settling:
+      "The hand is within tolerance, but the physical arm is still settling. PD continues applying torque.",
+    local_stall:
+      "The local position controller cannot command the missing direction. Gravity, inertia and joint PD still evolve the state.",
     tracking:
       "Run to reduce position error. Red arrows request hand velocity; green arrows show what the limited joint rates achieve.",
     reached:
@@ -860,7 +951,10 @@ function renderControl() {
     unreachable:
       "The target is outside the reachable annulus. The controller holds the current configuration.",
   };
-  $("ik-status").textContent = titles[c.status];
+  $("ik-status").textContent =
+    mode === "physics" && controller.limit
+      ? "Experiment complete · 15 simulated seconds"
+      : titles[c.status];
   $("ik-status").dataset.state =
     c.status === "unreachable"
       ? "unreachable"
@@ -868,7 +962,7 @@ function renderControl() {
         ? "singular"
         : "reachable";
   $("ik-message").textContent = controller.limit
-    ? "Stopped after 15 simulated seconds. Reset or change settings to run another experiment."
+    ? "Stopped after 15 simulated seconds. Reset, change settings, or apply a kick to start another experiment."
     : explanations[c.status];
   $("ik-error").textContent = fixed(c.error_norm, 4) + " m";
 }
@@ -883,7 +977,9 @@ $("control-run").addEventListener("click", () => {
   if (
     busy ||
     !controller.feedback ||
-    controller.feedback.status !== "tracking" ||
+    (mode === "physics"
+      ? controller.feedback.status === "unreachable"
+      : controller.feedback.status !== "tracking") ||
     controller.limit
   )
     return;
@@ -898,13 +994,16 @@ $("control-step").addEventListener("click", () => {
 $("control-reset").addEventListener("click", () => {
   pauseControl();
   setAngles(controller.initial);
+  physics.state = null;
+  physics.latest = null;
+  physics.kick = 0;
   samples = [];
   origin = performance.now();
   refreshControl();
 });
 for (const id of ["control-method", "control-damping", "control-gain"])
   $(id).addEventListener("change", () => {
-    if (mode === "control") refreshControl();
+    if (isTracking()) refreshControl();
     else draw();
   });
 for (const button of document.querySelectorAll("[data-control-example]"))
@@ -927,6 +1026,56 @@ for (const button of document.querySelectorAll("[data-control-example]"))
     [$("target-x"), $("target-y")].forEach((f, i) => {
       f.value = target[i];
     });
-    setMode("control");
+    setMode(mode === "physics" ? "physics" : "control", true);
   });
 new ResizeObserver(draw).observe($("control-history"));
+
+function renderPhysics() {
+  for (const id of ["kp", "kd", "limit"])
+    $("physics-" + id + "-value").textContent = $("physics-" + id).value;
+  const d = physics.latest?.dynamics;
+  for (const [id, val] of [
+    ["requested", d ? pair(d.requested_torque) : "—"],
+    ["applied", d ? pair(d.applied_torque) : "—"],
+    ["peak", d ? pair(d.peak_applied) : "—"],
+    ["error", d ? pair(d.joint_error) : "—"],
+    ["speed", physics.state ? pair(physics.state.qvel) : "—"],
+    ["saturated", d ? (d.saturated ? "Yes" : "No") : "—"],
+    ["leash", d ? (d.reference_limited ? "Yes" : "No") : "—"],
+  ])
+    $("physics-" + id).textContent = val;
+  $("physics-state").textContent = controller.running
+    ? "Physics running"
+    : "Physics paused";
+  drawDynamicsHistory(
+    $("torque-history"),
+    controller.history,
+    "torque",
+    d?.torque_limit ?? 20,
+  );
+  drawDynamicsHistory($("joint-error-history"), controller.history, "error");
+}
+$("mode-physics").addEventListener("click", () => setMode("physics"));
+$("enable-physics").addEventListener("click", () => setMode("physics"));
+for (const id of [
+  "physics-kp",
+  "physics-kd",
+  "physics-limit",
+  "physics-gravity",
+  "physics-compensate",
+])
+  $(id).addEventListener("change", () => {
+    if (mode === "physics") refreshControl();
+    else draw();
+  });
+$("physics-kick").addEventListener("click", () => {
+  if (mode !== "physics" || (busy && !controller.running)) return;
+  physics.kick = 2;
+  if (controller.limit) resetControlHistory();
+  if (!controller.running) {
+    controller.running = true;
+    controlLoop(++controller.runVersion);
+  }
+});
+for (const id of ["torque-history", "joint-error-history"])
+  new ResizeObserver(draw).observe($(id));

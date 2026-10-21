@@ -106,8 +106,8 @@ pseudoinverse guarantees convergence from every start. This implementation
 assumes unrestricted joints and ignores collisions.
 
 This is **kinematic velocity control**. It does not model inertia, gravity,
-contact or motor torque. A later dynamics experiment can turn these geometric
-targets into commands for the MuJoCo arm's PD controller.
+contact or motor torque. The [MuJoCo physics experiment](arm_physics.md) now connects these geometric
+targets to joint PD and torque-limited motors.
 
 ## Verification
 

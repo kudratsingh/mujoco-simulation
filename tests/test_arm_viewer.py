@@ -3,7 +3,7 @@ from http.server import ThreadingHTTPServer
 import json
 import threading
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 
 import numpy as np
 import pytest
@@ -104,3 +104,24 @@ def test_control_endpoint_reports_a_singular_trap(viewer_url):
         p = json.load(response)
     assert p["command"]["status"] == "stalled"
     assert p["command"]["reachable"]
+
+
+def test_physics_endpoint_steps_real_state_and_preserves_pause_preview(viewer_url):
+    def post(body):
+        with urlopen(Request(viewer_url+"/api/physics",data=json.dumps(body).encode(),headers={"Content-Type":"application/json"}),timeout=3) as response:
+            return json.load(response)
+    result=post({"state":{},"target":[1.1,.45]})
+    assert abs(result["state"]["time"]-.04) < 1e-12
+    assert len(result["dynamics"]["applied_torque"]) == 2
+    preview=post({"state":result["state"],"target":[1.1,.45],"dt":0})
+    assert preview["state"]["qpos"] == result["state"]["qpos"]
+    assert preview["state"]["qvel"] == result["state"]["qvel"]
+
+
+@pytest.mark.parametrize("body",[{"dt":.1},{"settings":{"torque_limit":-1}},
+ {"settings":{"gravity":"false"}},{"state":{"qvel":[0]}},{"target":[6,0]},
+ {"settings":{"secret":1}},[1,2],{"state":None}])
+def test_physics_endpoint_rejects_bad_requests(viewer_url,body):
+    with pytest.raises(HTTPError) as error:
+        urlopen(Request(viewer_url+"/api/physics",data=json.dumps(body).encode()),timeout=3)
+    assert error.value.code == 400

@@ -129,6 +129,21 @@ export function drawArm(svg, data, options, samples, camera, ik = null) {
       samples.map((s) => project([...s.position, is3d ? 0.02 : 0])),
       { stroke: "var(--green)", "stroke-width": 2, opacity: 0.7 },
     );
+  if (options.referencePose) {
+    const points = options.referencePose.positions.map((p) =>
+      project([...p, z]),
+    );
+    path(svg, points, {
+      stroke: "var(--muted)",
+      "stroke-width": 4,
+      "stroke-dasharray": "5 4",
+      opacity: 0.65,
+    });
+    const hand = points[2];
+    label(svg, hand[0] + 10, hand[1] - 18, "Joint reference", {
+      "font-size": 10,
+    });
+  }
   if (ik?.reachable && options.alternate) {
     for (const solution of ik.solutions.filter(
       (s) => s.branch !== ik.selectedBranch,
@@ -626,6 +641,8 @@ export function drawVelocity(svg, d, velocity, requested = null) {
   const extent =
     Math.max(
       0.5,
+      velocity.speed,
+      requested ? Math.hypot(...requested) : 0,
       1.5 * (Math.hypot(J[0][0], J[1][0]) + Math.hypot(J[0][1], J[1][1])),
     ) * 1.12;
   const scale = Math.min(w - 70, h - 62) / (2 * extent);
@@ -753,4 +770,88 @@ export function drawControlHistory(svg, samples) {
   svg.querySelector("desc").textContent = samples.length
     ? `Position error ${samples.at(-1).error.toFixed(4)} metres after ${samples.at(-1).time.toFixed(2)} simulated seconds.`
     : "Run target tracking to record the position error.";
+}
+
+export function drawDynamicsHistory(svg, samples, kind, limit = 20) {
+  const [w, h] = clear(svg);
+  if (!w || !h) return;
+  const data = samples.filter((s) => s.dynamics);
+  const get = (s) =>
+    kind === "torque" ? s.dynamics.applied_torque : s.dynamics.joint_error;
+  const ymax =
+    kind === "torque"
+      ? limit * 1.2
+      : Math.max(0.02, ...data.flatMap((s) => get(s).map(Math.abs))) * 1.2;
+  const left = 47,
+    right = w - 14,
+    top = 18,
+    bottom = h - 34,
+    duration = Math.max(1, data.at(-1)?.time ?? 0);
+  const map = (t, v) => [
+    left + ((right - left) * t) / duration,
+    (top + bottom) / 2 - ((v / ymax) * (bottom - top)) / 2,
+  ];
+  for (let i = -2; i <= 2; i++) {
+    const v = (ymax * i) / 2,
+      [, y] = map(0, v);
+    path(
+      svg,
+      [
+        [left, y],
+        [right, y],
+      ],
+      { stroke: i === 0 ? "var(--line)" : "var(--grid)" },
+    );
+    label(svg, left - 6, y + 4, v.toFixed(kind === "torque" ? 0 : 3), {
+      "text-anchor": "end",
+    });
+  }
+  for (let i = 0; i <= 4; i++) {
+    const x = left + ((right - left) * i) / 4;
+    label(svg, x, bottom + 17, ((duration * i) / 4).toFixed(1), {
+      "text-anchor": "middle",
+    });
+  }
+  if (kind === "torque")
+    for (const v of [-limit, limit]) {
+      const [, y] = map(0, v);
+      path(
+        svg,
+        [
+          [left, y],
+          [right, y],
+        ],
+        { stroke: "var(--red)", "stroke-dasharray": "4 4", opacity: 0.6 },
+      );
+    }
+  for (let joint = 0; joint < 2; joint++)
+    path(
+      svg,
+      data.map((s) => map(s.time, get(s)[joint])),
+      {
+        stroke: joint === 0 ? "var(--blue)" : "var(--orange)",
+        "stroke-width": 2,
+      },
+    );
+  for (const s of data) {
+    if (kind === "torque" && s.dynamics.saturated) {
+      const [cx, cy] = map(s.time, get(s)[0]);
+      el(svg, "circle", { cx, cy, r: 2.4, fill: "var(--red)" });
+    }
+    if (s.kick) {
+      const [x] = map(s.time, 0);
+      path(
+        svg,
+        [
+          [x, top],
+          [x, bottom],
+        ],
+        { stroke: "var(--green)", "stroke-dasharray": "3 3" },
+      );
+      label(svg, x + 4, top + 12, "Kick", { fill: "var(--green)" });
+    }
+  }
+  label(svg, (left + right) / 2, h - 3, "Simulated time (s)", {
+    "text-anchor": "middle",
+  });
 }

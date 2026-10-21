@@ -150,6 +150,9 @@
             <button id="mode-control" type="button" aria-pressed="false">
               Track target
             </button>
+            <button id="mode-physics" type="button" aria-pressed="false">
+              MuJoCo physics
+            </button>
           </div>
           <section
             id="ik-controls"
@@ -231,7 +234,7 @@
                 <button id="control-step" type="button">One step</button>
                 <button id="control-reset" type="button">Reset start</button>
               </div>
-              <p class="help">
+              <p class="help" id="control-loop-description">
                 Kinematic feedback at 0.04 s/step · joint limit ±1.5 rad/s · no
                 torque dynamics.
               </p>
@@ -243,6 +246,9 @@
                 >Controller settings &amp; error chart ↓</a
               >
             </div>
+            <button id="physics-kick" type="button" hidden>
+              Kick elbow · +2 rad/s
+            </button>
             <div class="readout">
               <span id="target-error-label">FK position error</span
               ><strong id="ik-error">—</strong>
@@ -420,12 +426,69 @@
               integrate → repeat.
             </p>
           </div>
+          <button id="enable-physics" type="button">Open MuJoCo physics</button>
           <button id="enable-control" type="button">
             Open target tracking
           </button>
         </div>
         <div class="controller-grid">
           <div>
+            <div id="physics-settings" hidden>
+              <div class="control-title">
+                <label for="physics-kp">Joint Kp · N·m/rad</label
+                ><output id="physics-kp-value">80</output>
+              </div>
+              <input
+                id="physics-kp"
+                type="range"
+                min="10"
+                max="200"
+                step="5"
+                value="80"
+                aria-label="Joint proportional gain"
+              />
+              <div class="control-title">
+                <label for="physics-kd">Joint Kd · N·m·s/rad</label
+                ><output id="physics-kd-value">12</output>
+              </div>
+              <input
+                id="physics-kd"
+                type="range"
+                min="0"
+                max="30"
+                step="1"
+                value="12"
+                aria-label="Joint derivative gain"
+              />
+              <div class="control-title">
+                <label for="physics-limit">Motor torque limit · N·m</label
+                ><output id="physics-limit-value">20</output>
+              </div>
+              <input
+                id="physics-limit"
+                type="range"
+                min="1"
+                max="30"
+                step="1"
+                value="20"
+                aria-label="Motor torque limit"
+              />
+              <label class="alternate-toggle"
+                ><input id="physics-gravity" type="checkbox" checked />Gravity
+                down the xy plane</label
+              >
+              <label class="alternate-toggle"
+                ><input
+                  id="physics-compensate"
+                  type="checkbox"
+                  checked
+                />Compensate gravity + Coriolis bias</label
+              >
+              <p class="help">
+                τ = Kp(q_ref − q) + Kd(q̇_ref − q̇) + optional bias. PD runs at
+                500 Hz; the Jacobian loop at 50 Hz. Dashed arm: joint reference.
+              </p>
+            </div>
             <label for="control-method">Jacobian solver</label>
             <select id="control-method">
               <option value="dls">Damped least squares</option>
@@ -529,10 +592,93 @@
               velocity at the displayed pose. Damping trades accuracy for
               smaller joint rates; it cannot create a missing direction.
             </p>
-            <p class="help">
+            <p class="help" id="control-stop-description">
               Each run stops when reached, stalled, unreachable, or after 15
               simulated seconds. Changing target, geometry, settings or mode
               pauses the run.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section
+        class="panel differential-panel"
+        id="physics-lab"
+        aria-label="MuJoCo physics measurements"
+        hidden
+      >
+        <div class="panel-heading">
+          <div>
+            <h2>Physical response · motor torque and joint tracking</h2>
+            <p>
+              Actual MuJoCo state · 2 ms physics steps · link masses 1.00 / 0.75
+              kg · collisions disabled
+            </p>
+          </div>
+          <span id="physics-state" class="mini-tag">Paused</span>
+        </div>
+        <div class="dynamics-grid">
+          <div>
+            <h2>Applied torque · N·m</h2>
+            <svg
+              id="torque-history"
+              role="img"
+              aria-label="Shoulder and elbow applied motor torque versus simulated time"
+            ></svg>
+            <p class="chart-caption">
+              Dashed lines: motor limits. Red dots mark frames with saturation
+              in any 2 ms substep.
+            </p>
+          </div>
+          <div>
+            <h2>Joint reference − measured angle · rad</h2>
+            <svg
+              id="joint-error-history"
+              role="img"
+              aria-label="Joint tracking error versus simulated time"
+            ></svg>
+            <p class="chart-caption">
+              Blue: shoulder · orange: elbow. These errors produce the PD
+              correction.
+            </p>
+          </div>
+          <div class="jacobian-metrics">
+            <div class="readout">
+              <span>Requested torque · N·m</span
+              ><strong id="physics-requested">—</strong>
+            </div>
+            <div class="readout">
+              <span>Applied torque · N·m</span
+              ><strong id="physics-applied">—</strong>
+            </div>
+            <div class="readout">
+              <span>Peak applied this frame · N·m</span
+              ><strong id="physics-peak">—</strong>
+            </div>
+            <div class="readout">
+              <span>Joint tracking error · rad</span
+              ><strong id="physics-error">—</strong>
+            </div>
+            <div class="readout">
+              <span>Measured joint speed · rad/s</span
+              ><strong id="physics-speed">—</strong>
+            </div>
+            <div class="readout">
+              <span>Torque saturation</span
+              ><strong id="physics-saturated">—</strong>
+            </div>
+            <div class="readout">
+              <span>Reference leash active</span
+              ><strong id="physics-leash">—</strong>
+            </div>
+            <p class="help">
+              The 0.35 rad reference leash prevents runaway joint targets under
+              saturation. The 1.5 rad/s bound limits reference rates; actual
+              speeds can exceed it after a kick.
+            </p>
+            <p class="help">
+              Physics keeps running while holding the target, until paused or
+              the 15 s experiment limit. Kick applies an explicit +2 rad/s
+              change to elbow velocity.
             </p>
           </div>
         </div>

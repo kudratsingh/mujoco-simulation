@@ -29,7 +29,8 @@ manipulability ellipse, and shows rank loss at straight/folded configurations.
 See [the Jacobian walkthrough](notes/jacobian.md). **Track target** closes the
 loop with a damped-least-squares velocity controller, error chart and singularity
 experiments. See [the control walkthrough](notes/resolved_rate_control.md).
-Torque dynamics are a later step.
+**MuJoCo physics** extends this loop through joint PD and torque-limited motors,
+with gravity, kick recovery and torque/tracking plots. See [the physics walkthrough](notes/arm_physics.md).
 Use the Mac venv for this viewer.
 
 ## Week 1 tracks
@@ -72,6 +73,8 @@ What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
   inverses, composition, the worked world/base/camera example.
 - `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
   and independent agreement with the MuJoCo two-link model.
+- `test_arm_dynamics.py` - real MuJoCo stepping, holding and kick recovery,
+  applied torque limits, gravity compensation, geometry and state isolation.
 - `test_resolved_rate.py` - closed-loop convergence, damping vs pseudoinverse,
   rate limits, singular stalls, unreachable targets and preview consistency.
 - `test_jacobian.py` - analytic derivatives vs finite differences and MuJoCo,
