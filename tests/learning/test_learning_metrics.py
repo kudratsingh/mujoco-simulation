@@ -40,3 +40,21 @@ def test_rejects_empty_duplicate_or_nonfinite_evaluation():
         summarize([e, e])
     with pytest.raises(ValueError, match="finite"):
         summarize([{**e, "return": float("nan")}])
+
+
+def test_committed_results_agree_with_episode_evidence():
+    import json
+    import math
+    from pathlib import Path
+
+    evidence = (
+        Path(__file__).resolve().parents[2] / "learning/maniskill/evidence/first_run"
+    )
+    comparison = json.loads((evidence / "comparison.json").read_text())
+    for name in ["ppo", "random", "zero"]:
+        result = json.loads((evidence / f"test_{name}.json").read_text())
+        assert summarize(result["episodes"]) == comparison[name]
+        for episode in result["episodes"]:
+            cube, goal = episode["final_cube_position"], episode["final_goal_position"]
+            geometric_success = math.dist(cube[:2], goal[:2]) < 0.1 and cube[2] < 0.025
+            assert geometric_success == episode["success_at_end"]

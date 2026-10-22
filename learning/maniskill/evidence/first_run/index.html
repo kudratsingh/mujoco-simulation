@@ -13,13 +13,13 @@ body{font:16px/1.6 system-ui,sans-serif;color:#17283b;background:#f3f6fa;margin:
 <tr><td>PPO</td><td>17 / 20 · 85%</td><td>7 / 20 · 35%</td><td>25.646</td></tr>
 <tr><td>Random actions</td><td>0 / 20</td><td>0 / 20</td><td>2.915</td></tr>
 <tr><td>Zero actions</td><td>0 / 20</td><td>0 / 20</td><td>3.673</td></tr></tbody></table>
-<p>The policy often pushes through the goal and out again. Temporary success is different from final placement. The episode-sampling 95% interval for reaching success is 64.0%–94.8%; this does not measure training-seed variability.</p>
+<p>Nine temporary successes ended outside the goal radius; one ended inside in xy but lifted the cube too high. Temporary success is different from meeting the full final-state criteria. The episode-sampling 95% interval for reaching success is 64.0%–94.8%; this does not measure training-seed variability.</p>
 </section>
 <section><h2>Learning curve and baseline comparison</h2><img src="results.png" alt="Validation return varies across checkpoints. PPO reaches success in 85% of episodes but ends successful in 35%; both baselines have zero successes."></section>
 <h2>Native simulator rollouts</h2><p>The first three test seeds, including temporary successes. Videos play at the simulator's control rate. Use the controls to pause or scrub.</p>
 <div class="videos">
-<section><h2>Seed 10000 · overshoots</h2><video controls muted preload="metadata" src="ppo_seed10000.mp4"></video><p>Reached during the episode; outside at the end.</p></section>
-<section><h2>Seed 10001 · overshoots</h2><video controls muted preload="metadata" src="ppo_seed10001.mp4"></video><p>Reached during the episode; outside at the end.</p></section>
+<section><h2>Seed 10000 · leaves the goal</h2><video controls muted preload="metadata" src="ppo_seed10000.mp4"></video><p>Reached during the episode; outside at the end.</p></section>
+<section><h2>Seed 10001 · lifts the cube</h2><video controls muted preload="metadata" src="ppo_seed10001.mp4"></video><p>Inside the xy goal radius, but lifted above the allowed table height.</p></section>
 <section><h2>Seed 10002 · finishes inside</h2><video controls muted preload="metadata" src="ppo_seed10002.mp4"></video><p>Reached and remained inside at the final step.</p></section>
 <section><h2>Same seed 10000 · zero actions</h2><video controls muted preload="metadata" src="zero_seed10000.mp4"></video><p>Zero joint increments and neutral gripper, with built-in PD still active.</p></section>
 </div>

@@ -98,10 +98,13 @@ def main():
         report("PASS: own publisher and subscriber exchanged JointState messages")
 
         # Save actual graph inspection output as evidence, not expected output.
-        command("ros2", "node", "list")
-        command("ros2", "node", "info", "/joint_publisher")
-        command("ros2", "topic", "list", "-t")
-        command("ros2", "topic", "info", "/joint_states", "--verbose")
+        # Inspect a fresh graph directly; a newly spawned CLI daemon can lag
+        # behind the probe even after messages are already flowing.
+        direct = ("--no-daemon", "--spin-time", "2")
+        command("ros2", "node", "list", *direct)
+        command("ros2", "node", "info", "/joint_publisher", *direct)
+        command("ros2", "topic", "list", "-t", *direct)
+        command("ros2", "topic", "info", "/joint_states", "--verbose", *direct)
         command("ros2", "topic", "echo", "/joint_states", "--once")
         command("ros2", "service", "list", "-t")
         command("ros2", "service", "type", "/reset_joint")

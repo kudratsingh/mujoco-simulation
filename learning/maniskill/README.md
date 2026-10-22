@@ -35,8 +35,11 @@ Vulkan SDK can instead be selected via `VK_ICD_FILENAMES`. See the upstream
 [Mac instructions](https://github.com/mani-skill/ManiSkill/blob/main/docs/source/user_guide/getting_started/macos_install.md)
 and [Homebrew package](https://formulae.brew.sh/formula/molten-vk).
 
-For **Linux x86-64 CPU**, use Python 3.11, install `libgl1 libegl1 libvulkan1`,
+For **Linux x86-64 CPU**, use Python 3.11, install `libgl1 libegl1 libvulkan1 mesa-vulkan-drivers`,
 install CPU PyTorch from its official wheel index, then install `requirements.in`.
+Select the Lavapipe ICD in `VK_ICD_FILENAMES` on machines without a GPU.
+SAPIEN still needs a render-capable device to create scene materials, even for
+state-only learning; the experiment selects its CPU-compatible render backend.
 The full Mac lock captures the exact observed environment; Linux resolution is
 separate. CI tests that Linux CPU path. CUDA-scale training is a later setup,
 not something this Mac run silently enables.
@@ -52,7 +55,7 @@ not something this Mac run silently enables.
 | Reward | Unmodified upstream `normalized_dense`: reaching behind the cube, gated placement/height shaping, success reward; dense reward divided by 4 |
 | Success | Cube xy is within 0.1 m of goal xy, and cube z is below half-size + 0.005 m |
 | Horizon | 50 control steps; no early success termination during evaluation |
-| Rates | Inspect the task's actual `sim_freq`/`control_freq`; one action spans several physics steps |
+| Rates | Measured: 100 Hz physics, 20 Hz control; five physics steps per action |
 | Reset | Upstream random cube position and robot joint noise; scene reconfigures each reset |
 
 State observations include ground truth object pose. This is a **state-based**

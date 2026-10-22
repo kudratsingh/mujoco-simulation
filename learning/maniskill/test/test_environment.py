@@ -37,3 +37,5 @@ def test_seeded_random_rollouts_repeat_and_use_full_horizon(tmp_path):
         assert a["return"] == b["return"]
         assert a["steps"] == b["steps"] == 50
         assert len(a["trajectory"]) == 51
+        assert a["final_cube_position"] == a["trajectory"][-1]["cube"]
+        assert a["final_cube_position"] == b["final_cube_position"]

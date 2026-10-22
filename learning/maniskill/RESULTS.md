@@ -26,9 +26,9 @@ sampled episodes, not over different training seeds; only one model was trained.
 ## What worked and what did not
 
 The learned policy substantially outperformed both simple baselines on this
-small evaluation. It often pushes the cube into the goal, then moves it out
-again. Ten episodes succeeded temporarily but failed at the final step; three
-never succeeded. The 85% headline therefore does not establish reliable final
+small evaluation. Ten episodes succeeded temporarily but failed at the final step: nine ended
+outside the goal radius, and one remained inside in xy but lifted the cube above
+the allowed table height. Three episodes never succeeded. The 85% headline therefore does not establish reliable final
 placement. Higher shaped reward alone is not a sufficient success criterion.
 
 Validation performance was non-monotonic, with temporary regressions between
@@ -42,8 +42,8 @@ Open [the visual report](evidence/first_run/index.html) through a local web serv
 or open its individual videos. These are native simulator renders, not a
 scripted motion or an illustrative reconstruction.
 
-- [Seed 10000](evidence/first_run/ppo_seed10000.mp4): reached during the episode; outside at the end.
-- [Seed 10001](evidence/first_run/ppo_seed10001.mp4): reached during the episode; outside at the end.
+- [Seed 10000](evidence/first_run/ppo_seed10000.mp4): reached during the episode; outside the xy goal radius at the end.
+- [Seed 10001](evidence/first_run/ppo_seed10001.mp4): ended within the xy goal radius, but cube height 0.0293 m exceeded the 0.025 m threshold.
 - [Seed 10002](evidence/first_run/ppo_seed10002.mp4): reached and finished inside.
 - [Zero-action baseline, seed 10000](evidence/first_run/zero_seed10000.mp4).
 

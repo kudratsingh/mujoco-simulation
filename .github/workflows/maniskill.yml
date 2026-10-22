@@ -20,7 +20,8 @@ jobs:
       - name: Install CPU policy and simulator dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libegl1 libvulkan1
+          sudo apt-get install -y libgl1 libegl1 libvulkan1 mesa-vulkan-drivers
+          echo "VK_ICD_FILENAMES=$(find /usr/share/vulkan/icd.d -name '*lvp*json' -print -quit)" >> "$GITHUB_ENV"
           python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -r learning/maniskill/requirements.in
       - name: Real task smoke and environment contract

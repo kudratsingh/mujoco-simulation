@@ -79,7 +79,7 @@ def make_env(config, render=False):
         control_mode=config.control_mode,
         reward_mode=config.reward_mode,
         sim_backend="physx_cpu",
-        render_backend="gpu" if render else "none",
+        render_backend="cpu",
         render_mode="rgb_array" if render else None,
         reconfiguration_freq=1,
     )
@@ -160,6 +160,7 @@ def evaluate(config, policy, seeds, output=None, traces=False, video=False):
             finally:
                 if writer:
                     writer.close()
+            terminal = trajectory_sample(env, step)
             episodes.append(
                 dict(
                     seed=seed,
@@ -169,6 +170,8 @@ def evaluate(config, policy, seeds, output=None, traces=False, video=False):
                     success_at_end=success,
                     first_success_step=first_success,
                     trajectory=trajectory,
+                    final_cube_position=terminal["cube"],
+                    final_goal_position=terminal["goal"],
                 )
             )
             episodes[-1]["return"] = episodes[-1].pop("return_")
