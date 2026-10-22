@@ -1,0 +1,58 @@
+# BC-initialized PPO: predeclared paired experiment
+
+The treatment copies the existing PickCube BC-256 actor into a compatible PPO
+policy. Fixed BC observation normalization, two 256-wide ReLU layers and the
+final linear layer are transferred explicitly; tanh is applied by the Gaussian
+action distribution, with its change-of-variables log probability. This is
+initialization, with no corrective controller, stopping postprocessor, continued
+BC loss or privileged policy input during training/evaluation.
+
+A genuinely fresh paired control has random actor weights. Both arms share the
+BC-derived normalization, ReLU architecture, tanh distribution, initial latent
+log standard deviation−3 (std≈0.0498), learning rate0.00003, fresh identical critic,
+fresh Adam optimizer, environment seeds and RNG isolation. The treatment is the
+actor tensors. The control is **not** the archived original raw-Gaussian recipe;
+both arms have demonstration-derived preprocessing. These recipe choices are
+fixed before training, not chosen from final-test performance.
+
+Task: original PickCube-v1, raw42-component observations, original normalized-dense
+reward, pd_joint_delta_pos, original 50-step horizon and success thresholds.
+Both arms train exactly1,048,576 transitions with seed42/four CPU workers,
+rollout256, batch256, eight epochs, gamma0.99, lambda0.95, PPO ratio clip0.2,
+zero entropy coefficient. No critic warmup, curriculum, extra samples, task
+resets near the goal, altered damping/reward or online normalization.
+
+The preflight gate requires single-state action error≤1e-6 on500 teacher-rollout
+observations and matching success/outcomes across ten validation episodes to
+within1e-4 numerical tolerance. The observed errors were exactlyzero. Initial
+non-actor tensors and empty optimizer state must match. Save each actual initial
+model, actor/non-actor fingerprints and pre-learning Python/NumPy/Torch RNG digest;
+compare these independent run manifests before interpreting final results.
+
+Validate at step0 and every65,536 transitions on140000–140009. Select by final
+success, then any-step success, then return. The fixed-budget final checkpoint is
+primary; selected warm checkpoints are secondary and may be step0. Report that
+explicitly if fine-tuning regresses. Validation runs before the corresponding
+optimizer update; final models are saved after the last update.
+
+Only after both runs complete, evaluate teacher, initialized PPO, warm final,
+matched control final and selected warm policy on50 fresh paired reset seeds
+150000–150049. Native videos use the first two seeds for teacher/warm/control.
+Compare initial teacher and initialized policy again on these final resets.
+Report final and any-step success, return, physical goal error and joint speed.
+Higher return with worse final success is regression, not progress. A promising
+improvement requires at leastfive additional final successes over BOTH teacher
+and matched control; it would need independent training-seed replication before
+an algorithm-level claim. No test outcome selects the budget or checkpoint.
+
+Training telemetry counts every stochastic on-policy transition separately from
+validation: grasp, placement, official success, static arm, reward, goal error,
+joint speed, near-boundary executed commands and out-of-bounds sampled commands,
+plus grasp-conditioned occupancy within10cm/5cm/2.5cm and per-episode any/final
+success. A deterministic evaluation zero is not evidence of no training successes.
+
+Historical raw/bounded experiments retain their original evidence. The archived
+raw run lacked explicit evaluation RNG isolation and a saved initial fingerprint.
+Matching new constructors does not prove its historical initialization. The new
+paired runs address these reproducibility limitations; they do not retroactively
+make the archived comparison perfectly controlled.
