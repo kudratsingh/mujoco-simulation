@@ -1,0 +1,203 @@
+{
+  "summary": {
+    "episodes": 20,
+    "successes": 0,
+    "success_once_rate": 0.0,
+    "success_at_end_rate": 0.0,
+    "success_once_95pct_wilson": [
+      0,
+      0.16113012549493322
+    ],
+    "return_mean": 2.9152166709303855,
+    "return_std": 1.433325269643931,
+    "steps_mean": 50
+  },
+  "episodes": [
+    {
+      "seed": 10000,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 5.46074415743351
+    },
+    {
+      "seed": 10001,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 1.2593191862106323
+    },
+    {
+      "seed": 10002,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 1.2013197243213654
+    },
+    {
+      "seed": 10003,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 4.043891757726669
+    },
+    {
+      "seed": 10004,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.2752684950828552
+    },
+    {
+      "seed": 10005,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 3.045409470796585
+    },
+    {
+      "seed": 10006,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 1.3000705540180206
+    },
+    {
+      "seed": 10007,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.3456991612911224
+    },
+    {
+      "seed": 10008,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 3.4375776052474976
+    },
+    {
+      "seed": 10009,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.0905674546957016
+    },
+    {
+      "seed": 10010,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.0814973562955856
+    },
+    {
+      "seed": 10011,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 4.384888634085655
+    },
+    {
+      "seed": 10012,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.2339105010032654
+    },
+    {
+      "seed": 10013,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 5.137341141700745
+    },
+    {
+      "seed": 10014,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 5.814307734370232
+    },
+    {
+      "seed": 10015,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 1.9026817381381989
+    },
+    {
+      "seed": 10016,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 1.191697135567665
+    },
+    {
+      "seed": 10017,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 2.4505145996809006
+    },
+    {
+      "seed": 10018,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 3.525239586830139
+    },
+    {
+      "seed": 10019,
+      "steps": 50,
+      "success_once": false,
+      "success_at_end": false,
+      "first_success_step": null,
+      "return": 3.1223874241113663
+    }
+  ],
+  "config": {
+    "env_id": "PushCube-v1",
+    "obs_mode": "state",
+    "control_mode": "pd_joint_delta_pos",
+    "reward_mode": "normalized_dense",
+    "seed": 42,
+    "total_timesteps": 262144,
+    "num_envs": 4,
+    "rollout_steps": 256,
+    "batch_size": 256,
+    "epochs": 8,
+    "validation_interval": 16384,
+    "validation_episodes": 5,
+    "test_episodes": 20,
+    "test_seed_start": 10000
+  },
+  "versions": {
+    "python": "3.11.15",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "mani-skill-nightly": "2026.8.2.400",
+    "sapien": "3.0.3",
+    "torch": "2.14.1",
+    "stable-baselines3": "2.9.0",
+    "gymnasium": "1.4.0",
+    "numpy": "2.4.6"
+  }
+}
