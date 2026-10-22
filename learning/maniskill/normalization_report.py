@@ -177,6 +177,22 @@ def report(run, output):
         f"Observation normalization changed final success by {delta:+.0f} percentage points on this paired test set. "
         "This is one seed per treatment: it identifies a useful next experiment, not a multi-seed algorithm ranking."
     )
+    audit_section = ""
+    if (output / "action_saturation.json").exists():
+        audit = json.loads((output / "action_saturation.json").read_text())
+        raw_rate = audit["raw_final"]["arm_any_mean_outside_bounds_fraction"]
+        normalized_rate = audit["normalized_final"][
+            "arm_any_mean_outside_bounds_fraction"
+        ]
+        audit_section = (
+            "<h2>Command-bound diagnostic</h2><p>On ten validation seeds, at least one "
+            f"arm-joint mean exceeded the action bounds on {raw_rate:.1%} of raw-policy "
+            f"steps and {normalized_rate:.1%} of normalized-policy steps. Clipping the means "
+            "exactly reproduced every deterministic command. Gripper closure is excluded. "
+            "This is physical command clipping, separate from PPO probability-ratio clipping; "
+            "it motivates a controlled action-distribution experiment without establishing a cause. "
+            '<a href="action_saturation.json">All 500 means per policy and checkpoint hashes</a>.</p>'
+        )
     html = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PickCube: observation normalization</title><style>
 body{{font:16px/1.6 system-ui;background:#f2f5f4;color:#172b2a;margin:0}}main{{max-width:1150px;margin:auto;padding:36px 22px}}h1{{font-size:38px;line-height:1.15}}h2{{margin-top:42px}}.tag{{color:#207665;font-weight:700}}.card,.pair{{background:white;border-radius:15px;padding:22px;margin:22px 0}}table{{border-collapse:collapse;width:100%}}td,th{{padding:12px;text-align:left;border-bottom:1px solid #dce5e2}}img{{width:100%}}.pair{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}.pair h3{{grid-column:1/-1;margin:0}}figure{{margin:0}}video{{width:100%;background:#ddd}}figcaption{{font-size:14px}}code{{font-size:14px}}a{{color:#116e65}}@media(max-width:700px){{.pair{{grid-template-columns:1fr}}main{{padding:20px 12px}}h1{{font-size:30px}}td,th{{padding:6px}}}}
@@ -189,6 +205,7 @@ body{{font:16px/1.6 system-ui;background:#f2f5f4;color:#172b2a;margin:0}}main{{m
 <h2>Native simulator rollouts</h2><p>The first three predeclared test seeds, with identical reset conditions for both policies. These are actual simulator frames; no success-based video selection. Use the video controls to compare the full episodes.</p>{videos}
 <h2>Where episodes failed</h2><table><tr><th>Outcome</th><th>Raw final</th><th>Normalized final</th><th>Selected normalized, secondary</th></tr>{failure_rows}</table><p>Categories are mutually exclusive. “Placed but moving” means placement was reached at least once without any full official success; it does not assert the object stayed at the goal. “Lifted” means ≥5 cm above that episode’s initial cube height, a diagnostic rather than success.</p>
 <h2>Statistics and selection</h2><p>Normalization uses only observations collected by the four training workers: count {final_stats["count"]:.4f}, {len(final_stats["mean"])} observation components. Snapshots save the model and running statistics together with SHA-256 checksums. Evaluation loads a separate copy with <code>training=False</code> and <code>norm_reward=False</code>; validation never updates training statistics.</p><p>The selected normalized checkpoint is step {selected["timesteps"]:,}, chosen by success at any time, then final success, then return on seeds 80000–80009. It is secondary because raw PPO originally used different selection seeds. The primary final checkpoint comparison does not use selection. Training took {training["elapsed_seconds"]:.1f} seconds versus {baseline["training"]["elapsed_seconds"]:.1f} seconds for the existing raw baseline.</p>
+{audit_section}
 <h2>Evidence and limitations</h2><p>One training seed per treatment. Fifty shared resets quantify these two policies, not variation over independent training runs. Training was performed on the same Mac but at different times; elapsed time is descriptive. The existing raw run was not retrained and used older validation seeds; validation does not affect PPO weights. No task reward, action scale, time horizon, curriculum, demonstration data or network architecture was changed.</p><p><a href="config.json">Protocol and versions</a> · <a href="comparison.json">Metrics</a> · <a href="failures.json">Failure counts</a> · <a href="paired_final_outcomes.json">Paired final outcomes</a> · <a href="baseline.json">Raw checkpoint provenance</a> · <a href="loaded_policy_contracts.json">Loaded policy contracts</a> · <a href="final_statistics.json">Final observation statistics</a> · <a href="final_snapshot.json">Final snapshot checksums</a></p></main></html>"""
     (output / "index.html").write_text(html)
     return comparison

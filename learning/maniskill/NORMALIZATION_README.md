@@ -29,6 +29,10 @@ packages into the root MuJoCo environment.
 .venv/bin/python -m learning.maniskill.normalization_comparison \
   --output learning/runs/pickcube_normalization_seed42 \
   --raw-checkpoint ../stage1-pickcube/learning/runs/pickcube_ppo_seed42/final.zip
+.venv/bin/python -m learning.maniskill.action_saturation \
+  --raw-checkpoint ../stage1-pickcube/learning/runs/pickcube_ppo_seed42/final.zip \
+  --normalized-snapshot learning/runs/pickcube_normalization_seed42/final \
+  --output learning/maniskill/evidence/pickcube_normalization/action_saturation.json
 .venv/bin/python -m learning.maniskill.normalization_report \
   --run learning/runs/pickcube_normalization_seed42 \
   --output learning/maniskill/evidence/pickcube_normalization
@@ -80,3 +84,9 @@ algorithm ranking. It can expose a practical observation-scaling issue for these
 two concrete policies. Training time is descriptive: the existing raw baseline
 was trained earlier on the same Mac, and the treatment includes its own validation
 overhead. No test outcome is used to select a training budget or checkpoint.
+
+The optional post-training action audit uses only validation seeds 80000–80009.
+It saves all 500 pre-clip deterministic Gaussian means per policy and checks that
+clipping them exactly reproduces the policy's commands. Arm-joint command
+saturation is separate from PPO's probability-ratio clipping and from gripper
+closure. It describes behavior; it does not establish a cause or test a fix.

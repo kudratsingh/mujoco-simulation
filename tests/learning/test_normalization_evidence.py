@@ -2,6 +2,7 @@
 
 import json
 import math
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -96,3 +97,34 @@ def test_paired_final_outcomes_recompute_from_shared_seeds():
         }[bool(a["success_at_end"]), bool(b["success_at_end"])]
         counts[key] += 1
     assert counts == load("paired_final_outcomes.json")
+
+
+def test_action_audit_recomputes_from_validation_means():
+    data = load("action_saturation.json")
+    assert data["protocol"]["validation_seeds"] == list(range(80000, 80010))
+    assert data["protocol"]["normalized_snapshot"] == load("final_snapshot.json")
+    source = EVIDENCE.parents[1] / "action_saturation.py"
+    assert (
+        hashlib.sha256(source.read_bytes()).hexdigest()
+        == data["protocol"]["source_sha256"]
+    )
+    for name in NAMES[:2]:
+        result = data[name]
+        assert result["seeds"] == data["protocol"]["validation_seeds"]
+        means = result["preclip_action_means"]
+        assert result["control_steps"] == len(means) == 500
+        assert all(
+            len(row) == 8 and all(math.isfinite(v) for v in row) for row in means
+        )
+        per_joint = [
+            sum(abs(row[j]) > 1 for row in means) / len(means) for j in range(7)
+        ]
+        assert per_joint == pytest.approx(
+            result["arm_mean_outside_bounds_fraction_per_joint"]
+        )
+        assert sum(per_joint) / 7 == pytest.approx(
+            result["arm_scalar_mean_outside_bounds_fraction"]
+        )
+        assert sum(any(abs(v) > 1 for v in row[:7]) for row in means) / len(
+            means
+        ) == pytest.approx(result["arm_any_mean_outside_bounds_fraction"])

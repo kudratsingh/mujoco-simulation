@@ -28,6 +28,16 @@ grasp-only and one never-grasped episode. Placement alone is insufficient:
 official success also requires a static robot. These coarse categories cannot
 identify the cause of failure by themselves.
 
+A separate post-training audit on validation seeds 80000–80009 found at least one
+arm-joint Gaussian mean outside the normalized action bounds on **94.8%** of raw
+policy steps and **100%** of normalized policy steps. Across all seven arm
+coordinates, the rates were 45.49% and 62.17%. Clipping those means exactly
+reproduced every deterministic command. Gripper closure is excluded from these
+arm rates. These are command-bound clips, not PPO probability-ratio clips.
+[The saved means and checkpoint hashes](evidence/pickcube_normalization/action_saturation.json)
+make this diagnostic auditable. Frequent saturation motivates an action-distribution
+ablation; it does not by itself prove why either policy failed.
+
 All eight normalized validation checkpoints also had zero success on seeds
 80000–80009. Mean validation return rose from 7.095 at 131,072 transitions to
 21.011 at 917,504. That 917,504 checkpoint was selected by the predeclared
