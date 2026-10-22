@@ -15,17 +15,17 @@ bounded support does not guarantee small commands or task success.
 
 - Upstream PickCube-v1, raw 42-component state, pd_joint_delta_pos eight actions,
   original normalized-dense reward, 50-step horizon, all success thresholds unchanged.
-- Seed 42, four CPU workers, exactly 1,048,576 transitions, rollout256, batch256,
-  epochs8, actor/critic256x256, learning rate0.0003, gamma0.99, lambda0.95,
-  PPO ratio clip0.2, entropy coefficient0. No observation/reward normalization.
+- Seed 42, four CPU workers, exactly 1,048,576 transitions, rollout 256, batch 256,
+  epochs 8, actor/critic256x256, learning rate 0.0003, gamma 0.99, lambda 0.95,
+  PPO ratio clip0.2, entropy coefficient 0. No observation/reward normalization.
 - Existing original raw final checkpoint is the primary control; verify its actual
   budget/task/spaces and checksum. It was trained earlier on the same Mac; runtime
   comparisons are descriptive. New validation seeds do not affect training weights.
-- Validate every131,072 transitions on100000–100009. Rank by final success, then
+- Validate every 131,072 transitions on100000–100009. Rank by final success, then
   any-step success, then raw return. Preserve training RNG streams during validation.
 - Primary outcome: final official success on50 fresh paired resets110000–110049,
-  fixed-budget final versus final. Report any-step success, raw return, final3D
-  distance and maximum seven-arm speed. Continue all50 steps after first success.
+  fixed-budget final versus final. Report any-step success, raw return, final 3D
+  distance and maximum seven-arm speed. Continue all 50 steps after first success.
 - Selected bounded checkpoint is secondary; original raw selection used different
   validation seeds. No test-based checkpoint/budget selection.
 - Native videos show the first two declared test seeds, regardless of outcome.
@@ -35,10 +35,10 @@ bounded support does not guarantee small commands or task success.
 ## Decision and limits
 
 This is one training seed, not an algorithm ranking or proof that clipping caused
-past failures. If the bounded final policy reaches at least5/50 final successes
+past failures. If the bounded final policy reaches at least 5/50 final successes
 and improves on the paired raw control, run an independent paired replication at
 seeds43 and44 with the same budget and recipe before claiming a robust improvement.
-Use fresh test resets120000–120049 for both replication seeds and validation seeds
+Use fresh test resets 120000–120049 for both replication seeds and validation seeds
 121000–121009. If not promising, report the negative result and inspect the stopping
 diagnostic before spending more samples. Do not change reward/controller/horizon
 mid-experiment. Keep privileged stopping overrides separate from learned success.

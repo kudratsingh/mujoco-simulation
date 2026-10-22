@@ -121,6 +121,20 @@ def report(run, output):
         )
         + "."
     )
+    activation_sections = ""
+    examples_path = output / "activation_examples.json"
+    if examples_path.exists():
+        examples = json.loads(examples_path.read_text())
+        activation_sections = "<h2>Illustrative activation cases</h2><p>These additional examples were chosen after the aggregate diagnostic: the first naturally activated validation seed per policy, matching the trace plots. They are selected examples, not a performance sample. All recorded fields match the original episodes; aggregate counts above are unchanged.</p>"
+        for policy in ["raw_final", "normalized_final"]:
+            activation_sections += (
+                f'<section class="pair"><h3>{policy}: first natural activation</h3>'
+            )
+            for video in examples["videos"]:
+                if video["policy"] == policy:
+                    activation_sections += f'<figure><video controls muted preload="metadata" src="{video["video"]}"></video><figcaption>seed {video["seed"]}, {video["mode"]}; {video["active_steps"]} overridden steps</figcaption></figure>'
+            activation_sections += "</section>"
+        activation_sections += '<p><a href="activation_examples.json">Example selection and video provenance</a></p>'
     html = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PickCube stopping diagnostic</title><style>
 body{{font:16px/1.6 system-ui;background:#f4f5f3;color:#20312d;margin:0}}main{{max-width:1150px;margin:auto;padding:30px 20px}}h1{{font-size:37px;line-height:1.15}}h2{{margin-top:40px}}.notice{{background:#fff0cf;border-left:5px solid #b67917;padding:20px}}.card,.pair{{background:white;border-radius:14px;padding:20px;margin:22px 0}}table{{border-collapse:collapse;width:100%;font-size:14px}}td,th{{padding:9px;text-align:left;border-bottom:1px solid #ddd}}.scroll{{overflow:auto}}.pair{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}.pair h3{{grid-column:1/-1;margin:0}}figure{{margin:0}}video,img{{width:100%}}a{{color:#126f59}}@media(max-width:700px){{.pair{{grid-template-columns:1fr}}h1{{font-size:29px}}main{{padding:18px 12px}}}}
 </style><main><p>Stage 1 · validation-only diagnostic</p><h1>What happens if a privileged override stops commanding arm increments after placement?</h1>
@@ -129,7 +143,8 @@ body{{font:16px/1.6 system-ui;background:#f4f5f3;color:#20312d;margin:0}}main{{m
 <div class="scroll"><table><tr><th>Condition</th><th>Ever placed</th><th>Any official success</th><th>Final official success</th><th>Override activated</th><th>Success after activation / activated episodes</th></tr>{rows}</table></div><p>For normal conditions the override activation columns are zero by definition. Official success still requires distance ≤0.025 m <em>and</em> all seven arm speeds ≤0.2 rad/s. Reaching placement alone does not meet that criterion.</p></div>
 <h2>Zero delta recomputes a measured-state target</h2><p>The installed Panda controller uses delta mode with <code>use_target=False</code>. Its normalized ±1 arm command maps to ±0.1 rad. Each step sets target = current measured joint position + increment. Sending zero therefore recomputes the measured pose each step; it does <b>not</b> retain a fixed pose from activation or guarantee that velocity vanishes. The log records the actual target and measured pre-step positions, and checks their equality on every active step.</p>
 <img src="stopping.png" alt="Paired normal and privileged-override distance and arm-speed traces"><p>Trace examples use the first naturally activated validation seed per policy (or the first seed when none activate). The aggregate table includes all ten seeds. Trace selection does not depend on success.</p>
-<h2>Native simulator videos</h2><p>The first two predeclared validation seeds for every condition, regardless of activation or success. If an override never activates, paired behavior is expected to be identical. Every video rerun reproduced its entire logged trajectory exactly.</p>{video_sections}
+{activation_sections}
+<h2>Predeclared native simulator videos</h2><p>The first two predeclared validation seeds for every condition, regardless of activation or success. If an override never activates, paired behavior is expected to be identical. Every video rerun reproduced its entire logged trajectory exactly.</p>{video_sections}
 <h2>Limits and reproducibility</h2><p>The ordinary policies reproduced all 500 pre-clip action means from the earlier validation saturation audit exactly. Frozen normalization statistics did not change. The protocol was saved before rollouts with checkpoint, source and installed controller hashes. Final test seeds remained untouched. A few naturally activated episodes cannot establish robust stopping, and any intervention success belongs to the privileged diagnostic rather than autonomous PPO.</p><p><a href="protocol.json">Predeclared protocol</a> · <a href="comparison.json">Aggregate outcomes</a> · <a href="baseline_equality.json">Earlier baseline equality</a> · <a href="raw_final_override.json">Raw override step log</a> · <a href="normalized_final_override.json">Normalized override step log</a> · <a href="plot_examples.json">Trace selection</a></p></main></html>"""
     (output / "index.html").write_text(html)
 

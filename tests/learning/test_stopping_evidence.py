@@ -118,3 +118,22 @@ def test_predeclared_videos_baselines_and_pre_activation_equality():
             first_action = changed["first_override_action_step"]
             prefix = 50 if first_action is None else first_action - 1
             assert ordinary["records"][:prefix] == changed["records"][:prefix]
+
+
+def test_additional_activation_examples_reference_original_outcomes():
+    import hashlib
+
+    examples = load("activation_examples.json")
+    assert "Illustrative activation videos" in examples["protocol"]["scope"]
+    assert len(examples["videos"]) == 4
+    selection = load("plot_examples.json")["seeds"]
+    for video in examples["videos"]:
+        assert video["seed"] == selection[video["policy"]]
+        original = load(video["reference"])["episodes"]
+        expected = next(e for e in original if e["seed"] == video["seed"])
+        assert video["active_steps"] == expected["active_steps"]
+        assert video["success_at_end"] == expected["success_at_end"]
+        assert video["all_recorded_fields_match"]
+        content = (ROOT / video["video"]).read_bytes()
+        assert len(content) > 1000
+        assert hashlib.sha256(content).hexdigest() == video["video_sha256"]

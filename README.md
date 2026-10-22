@@ -158,3 +158,12 @@ The next PickCube holding diagnostic and single-change bounded-action experiment
 are specified in [the predeclared protocol](learning/maniskill/BOUNDED_ACTION_PROTOCOL.md).
 Future PPO validation checkpoints prioritize final success; historical evidence
 retains its original selection order.
+
+See the [stopping diagnostic](learning/maniskill/STOPPING_RESULTS.md) and
+[bounded-action run instructions](learning/maniskill/BOUNDED_ACTION_README.md)
+for the next holding-objective investigation and its visual evidence.
+
+The bounded-action experiment is complete: [results and limits](learning/maniskill/BOUNDED_ACTION_RESULTS.md).
+Both final policies still scored 0/50 successes; the separate privileged stopping
+intervention recovered three naturally placed validation cases. The autonomous
+PPO success gate remains open.

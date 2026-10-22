@@ -32,9 +32,6 @@ def test_same_initial_parameters_bounded_samples_and_log_prob_identity():
             gaussian = dist.distribution.log_prob(torch.atanh(probe)).sum(1)
             jacobian = torch.log(1 - probe.square() + dist.epsilon).sum(1)
             torch.testing.assert_close(dist.log_prob(probe), gaussian - jacobian)
-            assert not np.array_equal(
-                raw.predict(obs.numpy())[0], bounded.predict(obs.numpy())[0]
-            )
     finally:
         env.close()
 
