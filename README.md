@@ -11,7 +11,9 @@ learning. Experiments include reproducible settings, tests and measured evidence
 
 Stage 1 PickCube: investigating precision placement and stopping. Observation-only
 hybrid and BC/PPO placement diagnostics are complete. A paired BC-initialized PPO
-experiment is underway with explicit RNG isolation and stochastic training metrics.
+experiment is complete: selected warm PPO reached 31/50 final test successes,
+but fixed-budget fine-tuning regressed to 0/50 versus the teacher’s 23/50.
+See the [results and native visualization](learning/maniskill/BC_PPO_README.md).
 Track headings describe implemented artifacts; owner oral gates remain separate.
 
 ## Week 2: arm kinematics, control, and ROS
