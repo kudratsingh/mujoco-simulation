@@ -8,7 +8,8 @@ reproducible artifacts; the owner must be able to explain every file.
 - `math/` — NumPy rotation/transform functions, two-link FK and browser explorer
 - `tests/` — pytest suite (transforms, MJCF model, simulate.py, pd_control.py); CI in `.github/workflows/tests.yml`
 - `mujoco/` — one-joint MJCF model, `simulate.py` (Thu), `pd_control.py` (Fri), generated `logs/` and `media/`
-- `ros2_ws/` — ROS 2 Jazzy package, Ubuntu 24.04 via Docker Desktop; see its README
+- `ros2_ws/` — ROS 2 Jazzy packages, Ubuntu 24.04 via Docker Desktop; see README and ARM_README
+  for the separate Week-1 exercise and Week-2 MuJoCo/ROS arm systems lab.
 - `architecture/` — Week-1 system map and review
 
 ## Commands

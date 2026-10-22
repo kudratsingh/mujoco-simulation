@@ -33,6 +33,11 @@ experiments. See [the control walkthrough](notes/resolved_rate_control.md).
 with gravity, kick recovery and torque/tracking plots. See [the physics walkthrough](notes/arm_physics.md).
 Use the Mac venv for this viewer.
 
+The next experiment connects real ROS processes to this arm. The **ROS arm systems lab**
+shows measured motion, target commands, latency, stale-command rejection and isolated
+bag replay at [localhost:8766](http://localhost:8766). Start it with Docker using
+[the ROS arm walkthrough](ros2_ws/ARM_README.md).
+
 ## Week 1 tracks
 
 | day | track | artifact | status |
