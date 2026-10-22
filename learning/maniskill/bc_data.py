@@ -33,6 +33,8 @@ def load_episodes(path):
     episodes = []
     with h5py.File(path, "r") as data:
         for item in metadata["episodes"]:
+            if not isinstance(item.get("episode_seed"), int):
+                raise ValueError("Every demonstration needs an integer source seed")
             key = f"traj_{item['episode_id']}"
             obs = np.asarray(data[key]["obs"], dtype=np.float32)
             actions = np.asarray(data[key]["actions"], dtype=np.float32)

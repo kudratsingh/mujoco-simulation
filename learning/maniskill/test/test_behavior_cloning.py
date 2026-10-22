@@ -92,3 +92,20 @@ def test_trained_bc_checkpoint_runs_a_complete_physical_episode(tmp_path):
     assert result["policy"] == "Behavior cloning deterministic"
     assert result["episodes"][0]["steps"] == 50
     assert np.isfinite(result["episodes"][0]["return"])
+
+
+def test_test_seeds_cannot_overlap_rollout_validation(tmp_path):
+    from learning.maniskill.behavior_cloning import run
+
+    checkpoint = tmp_path / "checkpoint.zip"
+    checkpoint.write_bytes(b"not loaded before split checks")
+    with pytest.raises(ValueError, match="disjoint"):
+        run(
+            dataset(tmp_path),
+            checkpoint,
+            tmp_path / "run",
+            test_episodes=10001,
+            large_count=4,
+            small_count=1,
+            validation_count=2,
+        )

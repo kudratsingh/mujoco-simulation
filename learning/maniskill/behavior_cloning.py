@@ -176,12 +176,18 @@ def run(
     small_count=32,
     validation_count=64,
 ):
+    if not 0 < small_count < large_count:
+        raise ValueError("Need 0 < small demonstration count < large count")
     if not Path(ppo_path).is_file():
         raise ValueError("An existing PPO checkpoint is required for the comparison")
     episodes = load_episodes(dataset)
     training, validation = split_episodes(episodes, large_count, validation_count)
     test_seeds = list(range(20000, 20000 + test_episodes))
-    if test_episodes < 1 or set(test_seeds) & {e["source_seed"] for e in episodes}:
+    if (
+        test_episodes < 1
+        or set(test_seeds) & set(range(30000, 30010))
+        or set(test_seeds) & {e["source_seed"] for e in episodes}
+    ):
         raise ValueError(
             "Test seeds must be positive in count and disjoint from source demonstration seeds"
         )
@@ -242,6 +248,7 @@ def make_report(directory):
     for name in comparison:
         if not name.startswith("bc_"):
             continue
+        color = {"bc_32": "#1f77b4", "bc_256": "#ff7f0e"}.get(name)
         history = json.loads((directory / name / "losses.json").read_text())
         axes[0].plot(
             [p["update"] for p in history],
@@ -253,8 +260,17 @@ def make_report(directory):
             axes[1].plot(
                 [p["update"] for p in history],
                 [p["rollout"]["success_once_rate"] for p in history],
+                color=color,
+                linestyle="--",
+                alpha=0.5,
+                label=name + " · any",
+            )
+            axes[1].plot(
+                [p["update"] for p in history],
+                [p["rollout"]["success_at_end_rate"] for p in history],
                 marker="o",
-                label=name,
+                color=color,
+                label=name + " · end",
             )
     axes[0].set(
         title="Held-out demonstration error",
@@ -265,11 +281,11 @@ def make_report(directory):
     axes[1].set(
         title="Validation rollout success",
         xlabel="Gradient updates",
-        ylabel="Success at any step",
-        ylim=(0, 1),
+        ylabel="Success fraction",
+        ylim=(-0.02, 1.05),
     )
     for ax in axes[:2]:
-        ax.legend()
+        ax.legend(fontsize=8)
     names = list(comparison)
     x = np.arange(len(names))
     axes[2].bar(
@@ -294,7 +310,9 @@ def make_report(directory):
     axes[2].tick_params(axis="x", rotation=30)
     axes[2].legend()
     fig.tight_layout()
-    fig.savefig(directory / "results.png", dpi=160)
+    fig.savefig(
+        directory / "results.png", dpi=160, bbox_inches="tight", pad_inches=0.16
+    )
     plt.close(fig)
 
 
