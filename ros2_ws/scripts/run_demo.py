@@ -116,7 +116,7 @@ def main():
         command("ros2", "node", "info", "/joint_publisher", *direct, contains="/joint_states")
         command("ros2", "topic", "list", "-t", *direct, contains="/joint_states")
         command("ros2", "topic", "info", "/joint_states", "--verbose", *direct, contains="joint_publisher")
-        command("ros2", "topic", "echo", "/joint_states", "--once")
+        command("ros2", "topic", "echo", "/joint_states", "sensor_msgs/msg/JointState", "--once")
         command("ros2", "service", "list", "-t", contains="/reset_joint")
         command("ros2", "service", "type", "/reset_joint", contains="std_srvs/srv/Trigger")
         result = command("ros2", "run", "stage0_basics", "reset_client")
