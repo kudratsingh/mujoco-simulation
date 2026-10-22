@@ -2,13 +2,15 @@
 
 The treatment copies the existing PickCube BC-256 actor into a compatible PPO
 policy. Fixed BC observation normalization, two 256-wide ReLU layers and the
-final linear layer are transferred explicitly; tanh is applied by the Gaussian
-action distribution, with its change-of-variables log probability. This is
+final linear layer are transferred explicitly. The Gaussian mean is the tanh of
+the actor output; exploration adds ordinary Gaussian noise around that mean.
+PPO scores/stores the raw sample, and the environment command is clipped to its
+bounds. There is no inverse tanh or transformed-sample Jacobian in this recipe. This is
 initialization, with no corrective controller, stopping postprocessor, continued
 BC loss or privileged policy input during training/evaluation.
 
 A genuinely fresh paired control has random actor weights. Both arms share the
-BC-derived normalization, ReLU architecture, tanh distribution, initial latent
+BC-derived normalization, ReLU architecture, Gaussian with bounded mean, initial
 log standard deviation−3 (std≈0.0498), learning rate0.00003, fresh identical critic,
 fresh Adam optimizer, environment seeds and RNG isolation. The treatment is the
 actor tensors. The control is **not** the archived original raw-Gaussian recipe;
@@ -18,8 +20,10 @@ fixed before training, not chosen from final-test performance.
 Task: original PickCube-v1, raw42-component observations, original normalized-dense
 reward, pd_joint_delta_pos, original 50-step horizon and success thresholds.
 Both arms train exactly1,048,576 transitions with seed42/four CPU workers,
-rollout256, batch256, eight epochs, gamma0.99, lambda0.95, PPO ratio clip0.2,
-zero entropy coefficient. No critic warmup, curriculum, extra samples, task
+rollout256, batch256, up to eight epochs, gamma0.99, lambda0.95, PPO ratio clip0.2,
+zero entropy coefficient and target-KL0.01 early-update guard. Only critic
+normalized inputs are clipped to±10; actor normalization stays exactly BC.
+The initial critic tensors, preprocessing and optimizer settings match between arms. No critic warmup, curriculum, extra samples, task
 resets near the goal, altered damping/reward or online normalization.
 
 The preflight gate requires single-state action error≤1e-6 on500 teacher-rollout
@@ -56,3 +60,9 @@ raw run lacked explicit evaluation RNG isolation and a saved initial fingerprint
 Matching new constructors does not prove its historical initialization. The new
 paired runs address these reproducibility limitations; they do not retroactively
 make the archived comparison perfectly controlled.
+
+An earlier implementation pilot failed numerically before completing training.
+It used a squashed Gaussian and an unclipped shared critic feature stream. It is
+preserved separately and excluded from performance results. The revised recipe
+above was redeclared before a fresh restart, after exact teacher-transfer and
+finite stochastic-update checks. No failed-pilot weights or optimizer state are reused.

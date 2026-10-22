@@ -142,9 +142,11 @@ def preflight(output, teacher_path):
             test_seeds=list(range(150000, 150050)),
             video_seeds=[150000, 150001],
             learning_rate=3e-5,
+            critic_feature_clip=10.0,
+            target_kl=0.01,
             initial_latent_log_std=-3,
             initial_exploration_std=float(np.exp(-3)),
-            treatment="BC actor tensors only; both arms use identical fixed BC-derived normalization, ReLU architecture, tanh Gaussian, fresh critic/optimizer, and exploration settings",
+            treatment="BC actor tensors only; both arms use identical fixed BC-derived normalization, ReLU architecture, Gaussian noise around a tanh-bounded mean, separate clipped critic features, fresh critic/optimizer, and exploration settings",
             primary="Warm final vs teacher, initialized warm, and fresh matched random-actor final at fixed budget; held-out resets untouched until training complete",
             interpretation="Matched control is not the archived raw-Gaussian recipe; shared preprocessing uses demonstration-derived statistics in both arms",
             checkpoint_selection=[

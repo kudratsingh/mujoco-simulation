@@ -5,13 +5,14 @@ import torch
 from torch import nn
 from stable_baselines3 import PPO
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from .bounded_ppo import TanhGaussianPolicy
+from stable_baselines3.common.policies import ActorCriticPolicy
 from .behavior_cloning import BehaviorPolicy
 
 
 class FixedNormalization(BaseFeaturesExtractor):
-    def __init__(self, observation_space, mean, std):
+    def __init__(self, observation_space, mean, std, clip=None):
         super().__init__(observation_space, features_dim=42)
+        self.clip = clip
         self.register_buffer("mean", torch.as_tensor(mean, dtype=torch.float32))
         self.register_buffer("std", torch.as_tensor(std, dtype=torch.float32))
         if (
@@ -22,7 +23,31 @@ class FixedNormalization(BaseFeaturesExtractor):
             raise ValueError("Expected the fixed 42-component BC normalization")
 
     def forward(self, observation):
-        return (observation - self.mean) / self.std
+        normalized = (observation - self.mean) / self.std
+        return (
+            normalized.clamp(-self.clip, self.clip)
+            if self.clip is not None
+            else normalized
+        )
+
+
+class BCMeanGaussianPolicy(ActorCriticPolicy):
+    """Gaussian exploration around BC's bounded deterministic output.
+
+    PPO stores/log-scores the raw Gaussian sample; only the environment command
+    is clipped. No inverse tanh of float32-saturated BC actions is required.
+    The critic has its own clipped features; the actor remains exactly BC.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs["share_features_extractor"] = False
+        super().__init__(*args, **kwargs)
+        self.vf_features_extractor.clip = 10.0
+
+    def _get_action_dist_from_latent(self, latent_pi):
+        return self.action_dist.proba_distribution(
+            self.action_net(latent_pi).tanh(), self.log_std
+        )
 
 
 def build(
@@ -30,7 +55,7 @@ def build(
 ):
     """Both arms share BC-derived statistics; actor weights are the treatment."""
     model = PPO(
-        TanhGaussianPolicy,
+        BCMeanGaussianPolicy,
         env,
         seed=seed,
         device="cpu",
@@ -43,6 +68,7 @@ def build(
         gae_lambda=0.95,
         clip_range=0.2,
         ent_coef=0,
+        target_kl=0.01,
         policy_kwargs=dict(
             net_arch=dict(pi=[256, 256], vf=[256, 256]),
             activation_fn=nn.ReLU,
