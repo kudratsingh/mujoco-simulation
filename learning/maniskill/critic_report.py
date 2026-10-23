@@ -218,9 +218,23 @@ def report(run, audit, output):
     protocol = read(run / "protocol.json")
     if (
         protocol["config"]["total_timesteps"] != 262144
-        or protocol["validation_seeds"] != list(range(180000, 180010))
-        or protocol["test_seeds"] != list(range(190000, 190050))
-        or protocol["video_seeds"] != [190000, 190001]
+        or protocol["validation_seeds"]
+        != list(
+            range(
+                protocol["config"]["validation_seed_start"],
+                protocol["config"]["validation_seed_start"]
+                + protocol["config"]["validation_episodes"],
+            )
+        )
+        or protocol["test_seeds"]
+        != list(
+            range(
+                protocol["config"]["test_seed_start"],
+                protocol["config"]["test_seed_start"]
+                + protocol["config"]["test_episodes"],
+            )
+        )
+        or protocol["video_seeds"] != protocol["test_seeds"][:2]
     ):
         raise ValueError("Unexpected critic ablation protocol")
     required = [
@@ -402,6 +416,14 @@ def report(run, audit, output):
         geometry[n]["final_successes"]
         for n in ["raw_final", "bounded_final", "teacher"]
     )
+    if protocol.get("worker_reset_seeding"):
+        reset_note = (
+            "<strong>Reset-stream contract:</strong> "
+            + html.escape(protocol["worker_reset_seeding"])
+            + ". This newly declared condition uses fresh seed partitions; historical unseeded-worker results remain separate. Matching streams under fixed actions is regression-tested, not a claim that trained policies follow identical trajectories."
+        )
+    else:
+        reset_note = "<strong>Reset-stream caveat:</strong> initial worker resets are seeded, but later automatic resets draw on worker Torch RNG that this historical factory did not seed. Parent fingerprints do not cover worker states; first-rollout summaries differ. These are matched initialization and recipe comparisons, not identical training trajectories. The subsequent worker-seeding repair is for future runs and does not relabel this evidence."
     (
         output / "index.html"
     ).write_text(f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PickCube critic stability diagnostic</title><style>
@@ -415,7 +437,7 @@ body{{font:16px/1.6 system-ui;margin:0;background:#f2f6f7;color:#193744}}main{{m
 <h2>Actual gradients and Adam steps</h2><p>Each point measures only the first executed optimizer step of that rollout, rather than all minibatches or the whole update. Hooks observe gradients before shared global clipping, gradients at Adam entry, and actual parameter deltas after that Adam step. Actor and critic curves are separate. Gaps mean no optimizer step. A smaller clipped gradient alone does not prove a smaller Adam update; momentum and adaptation matter.</p><img src="gradients.png" alt="Measured first-step actor and critic gradients before and after clipping and actual Adam parameter deltas">
 <h2>Stochastic training counts</h2><p>These counts exclude validation and tests. Steps are correlated; unfinished episodes at the final rollout boundary are excluded from completed-episode counts. A placed or successful state alone does not establish a learned pick.</p><div class="scroll"><table><tr><th>Arm</th><th>Transitions</th><th>Grasped steps</th><th>Placed steps</th><th>Successful steps</th><th>Final-success episodes</th></tr>{training_rows}</table></div>
 <h2>Native paired rollouts</h2><p>The first two predeclared test seeds are shown regardless of outcome. All stored non-trajectory episode fields match the corresponding full test episodes, and all six video files have saved SHA-256 hashes.</p>{videos}
-<h2>Selection and limits</h2><p><strong>Reset-stream caveat:</strong> initial worker resets are seeded, but later automatic resets draw on worker Torch RNG that this historical factory did not seed. Parent fingerprints do not cover worker states; first-rollout summaries differ. These are matched initialization and recipe comparisons, not identical training trajectories. The subsequent worker-seeding repair is for future runs and does not relabel this evidence.</p><p>Selected checkpoints: {selected}. Ranking uses final success, then any-step success, then return. Selection is secondary and uses ten fixed validation resets. Validation executes before the optimizer update at that boundary; fixed-budget final models include the last update. Step-zero selections represent the initial BC actor, not PPO improvement.</p>
+<h2>Selection and limits</h2><p>{reset_note}</p><p>Selected checkpoints: {selected}. Ranking uses final success, then any-step success, then return. Selection is secondary and uses ten fixed validation resets. Validation executes before the optimizer update at that boundary; fixed-budget final models include the last update. Step-zero selections represent the initial BC actor, not PPO improvement.</p>
 <p>The historical audit uses 408 fixed off-policy demonstration states to inspect earlier checkpoints. It establishes critic miscalibration on those probes; it does not recover historical on-policy gradients or prove the cause of instability. Saved Adam buffers are momentum statistics. This experiment adds actual on-policy telemetry to test a single stabilization hypothesis.</p>
 <h2>Evidence</h2><p>{evidence_links}</p><p>Episode evidence is exported as compact JSONL for all three preflight policies, all five test conditions and the native video episodes. Archived launch sources are checksum-verified against the protocol.</p></main></html>""")
     return geometry, totals

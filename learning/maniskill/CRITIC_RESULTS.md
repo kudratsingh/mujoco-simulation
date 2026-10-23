@@ -60,8 +60,9 @@ the objective; it is not included as a bug fix. The bound clips neither raw
 rewards nor return targets, and it does not alter the task's success definition.
 
 This narrows the diagnosis: runaway values and shared clipping are an observable
-numerical problem, and the bound suppresses that pattern. Keeping predictions inside the valid range does not establish an accurate
-critic. Preventing the pattern was insufficient to retain precise placement/holding. The result does not prove
+numerical problem, and the bound suppresses that pattern. Keeping predictions
+inside the valid range does not establish an accurate critic. Preventing the
+pattern was insufficient to retain precise placement/holding. The result does not prove
 critic instability was the sole or original cause of behavioral regression.
 
 ## Reproducibility and checks
@@ -81,7 +82,8 @@ Actual loaded models and recipes pass independent source, initialization,
 selection and budget guards. Frozen launch source snapshots are committed.
 
 A regression test requires bitwise identical training weights with and without
-both gradient hooks and timeout probes on a synthetic environment. A source audit found a specific reset-seeding gap: SB3 queues seeds for the
+both gradient hooks and timeout probes on a synthetic environment. A source
+audit found a specific reset-seeding gap: SB3 queues seeds for the
 initial resets, then auto-resets workers without seed arguments. ManiSkill's
 default non-enhanced-determinism path initializes new cube/goal states from
 worker Torch RNG that this factory never explicitly seeded. The parent RNG
@@ -91,7 +93,10 @@ First-rollout reward summaries differ. These runs therefore match recipe,
 initial tensors and parent RNG, not fully controlled training reset streams.
 This limits causal arm comparisons; the small final-success difference is not
 treated as a fix. A subsequent commit repairs worker seeding for future runs;
-the archived evidence is not retroactively changed.
+the archived evidence is not retroactively changed. The repaired factory also
+uses ManiSkill's `enhanced_determinism=True`: global seeding alone repeated the
+first scene on the first automatic reset. The integration regression checks
+reproducible complete trajectories and distinct scenes across resets/ranks.
 
 Compact outcomes independently reconstruct 3D goal distance, seven-arm speeds,
 full-horizon success, count budgets, clipping arithmetic and timeout corrections.

@@ -71,3 +71,10 @@ The first rollout therefore did not have an identical environment-data stream
 between arms. Current results retain this caveat; later factory fixes apply only
 to newly declared runs. Use the archived launch-source commit to reproduce this
 historical condition rather than silently applying the repair to its labels.
+
+Future-run repair: the current CLI uses `seeded_training_env(config, rank)`,
+which seeds each worker's Python/NumPy/Torch globals before/after construction
+and enables ManiSkill's per-episode deterministic reset mode. Both paired arms
+receive distinct rank seeds. Fresh validation/test partitions are 200000–200009
+and 210000–210049. The historical artifact above keeps its original 180000/190000
+partitions and frozen source commit `4f48931`; it is not a seeded-worker rerun.

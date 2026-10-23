@@ -17,6 +17,7 @@ from .critic_diagnostics import DiagnosticPPO, RolloutDiagnostics
 from .critic_policy import BoundedCriticPolicy
 from .experiment import Config, evaluate, save_json, versions
 from .normalized_ppo import sha256
+from .seeded_env import seeded_training_env
 from .selection import holding_score
 from .training_metrics import TrainingMetrics, training_env
 
@@ -25,9 +26,9 @@ TASK = Config(
     total_timesteps=262144,
     num_envs=4,
     validation_interval=32768,
-    validation_seed_start=180000,
+    validation_seed_start=200000,
     validation_episodes=10,
-    test_seed_start=190000,
+    test_seed_start=210000,
     test_episodes=50,
 )
 SOURCES = [
@@ -39,6 +40,7 @@ SOURCES = [
     "experiment.py",
     "training_metrics.py",
     "rng.py",
+    "seeded_env.py",
     "selection.py",
     "metrics.py",
     "behavior_cloning.py",
@@ -106,11 +108,13 @@ def declare(output, teacher_path):
             "teacher_sha256": sha256(teacher_path),
             "sources": {n: sha256(Path(__file__).with_name(n)) for n in SOURCES},
             "versions": versions(),
-            "validation_seeds": list(range(180000, 180010)),
-            "test_seeds": list(range(190000, 190050)),
-            "video_seeds": [190000, 190001],
+            "validation_seeds": list(range(200000, 200010)),
+            "test_seeds": list(range(210000, 210050)),
+            "video_seeds": [210000, 210001],
             "arms": ["raw", "bounded"],
             "value_bound": 100.0,
+            "worker_reset_seeding": "Python/NumPy/Torch seeded before and after worker construction with seed+rank; enhanced_determinism=True advances reproducible per-episode seeds on auto-reset",
+            "historical_source_commit": "4f48931",
             "treatment": "Only critic output changes: V=100*tanh(raw_V/100). Identical actor and canonical critic parameters, normalization, RNG and optimizer recipe. No target/reward clipping or timeout-semantics change.",
             "budget_reason": "Short diagnostic budget fixed at the previously observed regression point, before fresh test evaluation. Not evidence of million-transition stability.",
             "primary": "Fixed-budget final bounded versus raw and BC teacher; selected checkpoints secondary.",
@@ -190,7 +194,10 @@ def train(output, teacher_path, arm):
         raise ValueError("Preflight did not pass")
     directory = output / arm
     directory.mkdir()
-    env = SubprocVecEnv([training_env(TASK) for _ in range(4)], start_method="spawn")
+    env = SubprocVecEnv(
+        [seeded_training_env(TASK, rank) for rank in range(TASK.num_envs)],
+        start_method="spawn",
+    )
     env.seed(42)
 
     class Validate(BaseCallback):

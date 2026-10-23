@@ -20,6 +20,8 @@ values and measured actor-update suppression under shared gradient clipping.
 Bounding the critic controlled that growth, but final success remained below
 the teacher (10/50 bounded, 7/50 raw, 28/50 teacher). Its visual report separates
 selected checkpoints and records the worker-reset reproducibility caveat.
+Future critic runs use seeded workers and deterministic per-episode resets; a
+native regression checks repeatable trajectories with varied scenes.
 Track headings describe implemented artifacts; owner oral gates remain separate.
 
 ## Week 2: arm kinematics, control, and ROS

@@ -6,6 +6,16 @@
 Use the separate ManiSkill Python 3.11 environment from [setup](README.md).
 Full checkpoints and the expert dataset remain ignored local artifacts.
 
+The historical results were produced by source commit `4f48931`. Use that commit
+in an isolated worktree when reproducing or running strict source guards on the
+committed historical experiment. The current commands below declare a **new**
+worker-seeded condition: Python/NumPy/Torch seeds per worker plus ManiSkill
+`enhanced_determinism=True`. It uses new validation seeds 200000–200009 and test
+seeds 210000–210049. No policy has been trained or evaluated on those partitions
+in this investigation. Current source guards intentionally reject the historical
+protocol after the repair; its archived snapshots and verification remain intact.
+
+
 ```bash
 .venv/bin/python -m learning.maniskill.critic_experiment declare \
   --output learning/runs/critic_fresh \
