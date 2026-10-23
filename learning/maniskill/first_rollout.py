@@ -206,6 +206,8 @@ def verify_first_rollout(teacher_path, output, seed=42, workers=4):
         for arm in ["raw", "bounded"]
     }
     comparison = compare_histories(histories["raw"], histories["bounded"])
+    if histories["raw"]["actual_transitions"] != workers * config.rollout_steps:
+        raise ValueError("Captured transition count differs from worker configuration")
     payload = "".join(
         json.dumps(
             {"arm": arm, "initial_observation": history["initial_observation"]},
@@ -232,7 +234,7 @@ def verify_first_rollout(teacher_path, output, seed=42, workers=4):
         "worker_seeds": list(range(seed, seed + workers)),
         "workers": workers,
         "stochastic_steps_per_worker": 256,
-        "transitions_per_arm": 512,
+        "transitions_per_arm": histories["raw"]["actual_transitions"],
         "timeouts_per_arm": {
             arm: sum(sum(row["timeout"]) for row in history["records"])
             for arm, history in histories.items()

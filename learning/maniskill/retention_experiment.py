@@ -189,6 +189,13 @@ def calibrate(output, teacher_path):
         != first["records_sha256"]
     ):
         raise ValueError("First-rollout records changed")
+    if (
+        first["workers"] != TASK.num_envs
+        or first["transitions_per_arm"] != TASK.num_envs * TASK.rollout_steps
+    ):
+        raise ValueError(
+            "First-rollout configuration differs from performance training"
+        )
     teacher = load_teacher(teacher_path)
     tf = tensor_fingerprint(teacher)
     cfg = replace(TASK, seed=91042, total_timesteps=8192)
