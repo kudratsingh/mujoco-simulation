@@ -29,18 +29,18 @@ critic tensors, optimizer, exploration and learning settings match the raw arm.
 Canonical parameter names remove only the extra outer value-head module prefix.
 Both actual initial checkpoints, RNG digests and empty optimizers must match.
 
-Each arm starts fresh from the BC-256 teacher with seed42 and four CPU workers.
-Both receive exactly262,144 transitions. This short budget was chosen from the
+Each arm starts fresh from the BC-256 teacher with seed 42 and four CPU workers.
+Both receive exactly 262,144 transitions. This short budget was chosen from the
 previously observed regression point before new test outcomes. It is not a claim
 of stability for the former million-transition budget. Other settings match
-PR16: rollout256, batch256, up to8 epochs, learning rate0.00003, gamma0.99,
-lambda0.95, PPO ratio clip0.2, entropy coefficient0, initial std exp(-3), target
-KL0.01, original PickCube reward/controller/50-step horizon.
+PR16: rollout 256, batch 256, up to 8 epochs, learning rate 0.00003, gamma 0.99,
+lambda 0.95, PPO ratio clip 0.2, entropy coefficient 0, initial std exp(-3), target
+KL 0.01, original PickCube reward/controller/50-step horizon.
 
-Validation seeds180000–180009 run at step0 and every32,768 transitions. Selection
+Validation seeds 180000–180009 run at step 0 and every 32,768 transitions. Selection
 ranks final success, then any-step success, then return; selected checkpoints are
 secondary. Only after both runs finish, evaluate teacher, raw final, bounded
-final, raw selected and bounded selected on untouched paired seeds190000–190049.
+final, raw selected and bounded selected on untouched paired seeds 190000–190049.
 Native videos use the first two seeds for teacher and both final policies.
 The primary comparison is fixed-budget final success; selection cannot replace it.
 One training seed per arm cannot establish robustness.
@@ -64,3 +64,10 @@ Do not edit launch sources during training. Both arms use the same frozen
 instrumentation; source snapshots and hashes are saved before launch. All
 historical results remain intact. Evaluate on the original task without any
 stopping postprocessor or privileged corrective controller.
+
+Post-run reproducibility finding: this archived run's factory seeded the parent
+and first worker resets but not worker Torch RNG for later automatic resets.
+The first rollout therefore did not have an identical environment-data stream
+between arms. Current results retain this caveat; later factory fixes apply only
+to newly declared runs. Use the archived launch-source commit to reproduce this
+historical condition rather than silently applying the repair to its labels.
