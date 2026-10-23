@@ -28,8 +28,10 @@ def test_actual_first_rollout_matches_before_any_update(tmp_path):
         np.testing.assert_array_equal(np.random.random(3), expected[1])
         torch.testing.assert_close(torch.rand(3), expected[2], rtol=0, atol=0)
     assert receipt["passed"] and receipt["optimizer_empty_after"]
-    assert receipt["transitions_per_arm"] == 512
-    assert receipt["timeouts_per_arm"] == {"raw": 10, "bounded": 10}
+    assert receipt["workers"] == 4
+    assert receipt["worker_seeds"] == [42, 43, 44, 45]
+    assert receipt["transitions_per_arm"] == 1024
+    assert receipt["timeouts_per_arm"] == {"raw": 20, "bounded": 20}
     path = tmp_path / "capture/first_rollout.jsonl.gz"
     assert hashlib.sha256(path.read_bytes()).hexdigest() == receipt["records_sha256"]
     rows = [
