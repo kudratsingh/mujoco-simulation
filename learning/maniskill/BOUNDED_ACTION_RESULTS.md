@@ -1,5 +1,8 @@
 # Tanh-Gaussian PPO did not fix placement or stopping
 
+> Historical experiment: subsequent studies changed the project status. See the
+> [current experiment ledger](../../docs/EXPERIMENTS.md) for the latest results.
+
 The predeclared final-checkpoint comparison produced **0/50 any-step and final
 successes for both policies** on fresh paired test seeds 110000–110049. Changing
 the action distribution alone did not solve the upstream PickCube task at the

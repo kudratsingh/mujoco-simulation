@@ -1,5 +1,8 @@
 # Smaller PPO updates did not solve placement; a goal fault was recoverable
 
+> Historical experiment: subsequent studies changed the project status. See the
+> [current experiment ledger](../../docs/EXPERIMENTS.md) for the latest results.
+
 October 22, 2026. This controlled continuation starts both PPO forks from the
 same final-budget 1,048,576-transition checkpoint, including populated Adam
 state. Each receives 524,288 additional transitions. The only treatment is

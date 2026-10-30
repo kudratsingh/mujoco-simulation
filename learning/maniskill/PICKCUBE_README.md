@@ -8,9 +8,10 @@ it does not complete Stage 1's vision, meaningful-RL-performance or deliberate
 break-and-recover gates.
 
 Read [the measured results](PICKCUBE_RESULTS.md) and open
-[the video report](evidence/stage1_pickcube/index.html). Until merged, use the
-`feat/stage1-pickcube` checkout at `.worktrees/stage1-pickcube` from the original
-repository. It is stacked on `feat/week4-behavior-cloning`.
+[the video report](evidence/stage1_pickcube/index.html). The implementation is
+integrated on `main`; use the separate [learning setup](README.md#setup). This
+page documents the original baseline, while the [current experiment ledger](../../docs/EXPERIMENTS.md)
+tracks the later fault-recovery and teacher-retention studies.
 
 ## What the policy observes and controls
 
