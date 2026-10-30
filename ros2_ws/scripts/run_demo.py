@@ -52,12 +52,20 @@ def main():
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait(timeout=5)
 
-    def command(*argv):
-        result = subprocess.run(argv, text=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, timeout=20)
-        report("$ " + " ".join(argv) + "\n" + result.stdout.strip())
-        result.check_returncode()
-        return result.stdout
+    def command(*argv, retry_missing_node=False):
+        # The ROS CLI daemon can briefly lag behind an already-connected node.
+        # Retry only its explicit discovery failure; preserve all other errors.
+        deadline = time.monotonic() + 10
+        while True:
+            result = subprocess.run(argv, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, timeout=20)
+            report("$ " + " ".join(argv) + "\n" + result.stdout.strip())
+            if not (retry_missing_node and result.returncode and
+                    "Unable to find node '/joint_publisher'" in result.stdout and
+                    time.monotonic() < deadline):
+                result.check_returncode()
+                return result.stdout
+            time.sleep(0.2)
 
     rclpy.init()
     probe = Node("exercise_probe")
@@ -99,7 +107,7 @@ def main():
 
         # Save actual graph inspection output as evidence, not expected output.
         command("ros2", "node", "list")
-        command("ros2", "node", "info", "/joint_publisher")
+        command("ros2", "node", "info", "/joint_publisher", retry_missing_node=True)
         command("ros2", "topic", "list", "-t")
         command("ros2", "topic", "info", "/joint_states", "--verbose")
         command("ros2", "topic", "echo", "/joint_states", "--once")
