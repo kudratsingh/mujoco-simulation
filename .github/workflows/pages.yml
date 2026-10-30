@@ -1,0 +1,68 @@
+name: Public documentation
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['docs/**', 'scripts/build_public_site.py', '.github/workflows/pages.yml']
+  push:
+    branches: [main]
+    paths: ['docs/**', 'scripts/build_public_site.py', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check public scripts
+        run: node --check docs/assets/site.js
+      - name: Read immutable research snapshot
+        id: snapshot
+        run: |
+          python - <<'PY'
+          import json, os, re
+          sha = json.load(open('docs/project.json'))['source_commit']
+          assert re.fullmatch(r'[0-9a-f]{40}', sha)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'sha={sha}\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.snapshot.outputs.sha }}
+          path: .public-source
+          sparse-checkout: learning/maniskill/evidence
+          persist-credentials: false
+      - name: Build reports and validate local links
+        run: python scripts/build_public_site.py --source .public-source --output _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy public reports
+        id: deployment
+        uses: actions/deploy-pages@v4

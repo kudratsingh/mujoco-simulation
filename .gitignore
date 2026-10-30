@@ -4,13 +4,15 @@ __pycache__/
 .DS_Store
 mujoco/logs/*.csv
 .worktrees/
+.pytest_cache/
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 ros2_ws/bags/
 ros2_ws/evidence/
 *.egg-info/
-.pytest_cache/
 learning/runs/
 learning/.assets/
 learning/.runtime
+_site/
+.public-source/
