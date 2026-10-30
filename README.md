@@ -17,16 +17,15 @@ that must place an object and remain successful through a complete rollout.
 ## Current state
 
 Documentation refreshed **October 29, 2026**; latest measurements **October 23**.
-**Main contains the Week-1 foundations and this documentation hub.** The arm lab,
-ROS integration, and learning experiments are implemented in open feature PRs,
-through [PR #19](https://github.com/kudratsingh/physical-ai-foundations/pull/19).
-Publishing their reports does not merge their implementations.
+**Main includes the foundations, arm lab, ROS integration, and learning experiments**
+through the fixed-strength study in [PR #19](https://github.com/kudratsingh/physical-ai-foundations/pull/19).
+The original experiment commits and evidence snapshots remain available for provenance.
 
 The public hub serves 12 unchanged visual reports from the pinned research
 snapshot [`4d2dbda`](https://github.com/kudratsingh/physical-ai-foundations/tree/4d2dbdaa09e48a74a05857e38212fdc0685360d9).
 It includes native simulator videos, failure trajectories, protocols and evidence.
 See [integration status and scope](docs/CURRENT_STATE.md) for the distinction
-between implemented artifacts, merged code and unverified competency gates.
+between implemented artifacts, verified results and unverified competency gates.
 
 ## Latest finding: stronger anchoring is a tradeoff
 
@@ -63,10 +62,10 @@ must not be compared as a change in the teacher.
 | Track | Implemented artifacts | Where to start |
 |---|---|---|
 | Physical foundations | Configuration space, frames/SO(3)/SE(3), transforms, pendulum simulation, PD gains and kick recovery | [MuJoCo walkthrough](mujoco/README.md), [frame notes](notes/frames_se3.md) — on main |
-| Arm control | Two-link FK/IK, Jacobian, damped least squares, workspace/singularity explorer, torque-limited MuJoCo physics | [Arm lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/notes/planar_arm.md) — feature snapshot |
-| ROS systems | Jazzy pub/sub, reset service, exact bag replay; separate MuJoCo arm simulator/controller and browser dashboard | [ROS basics](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/README.md), [arm systems lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/ARM_README.md) — feature snapshot |
-| Robot learning | PushCube/PickCube PPO and BC, observation/optimization diagnostics, critic stability, teacher anchoring and strength ablations | [Visual report hub](https://kudratsingh.github.io/physical-ai-foundations/), [experiment ledger](docs/EXPERIMENTS.md) — feature snapshot |
-| Learning theory | MDPs, PPO/GAE and executable advantage examples | [Separate PR #13 worksheet](https://github.com/kudratsingh/physical-ai-foundations/blob/52701c2b1f5108060810e9c6f6b41311b88343b7/notes/robot_learning_mdp.md) — not part of the PR #19 snapshot |
+| Arm control | Two-link FK/IK, Jacobian, damped least squares, workspace/singularity explorer, torque-limited MuJoCo physics | [Arm lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/notes/planar_arm.md) — on main |
+| ROS systems | Jazzy pub/sub, reset service, exact bag replay; separate MuJoCo arm simulator/controller and browser dashboard | [ROS basics](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/README.md), [arm systems lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/ARM_README.md) — on main |
+| Robot learning | PushCube/PickCube PPO and BC, observation/optimization diagnostics, critic stability, teacher anchoring and strength ablations | [Visual report hub](https://kudratsingh.github.io/physical-ai-foundations/), [experiment ledger](docs/EXPERIMENTS.md) — on main |
+| Learning theory | MDPs, PPO/GAE and executable advantage examples | [Separate PR #13 worksheet](https://github.com/kudratsingh/physical-ai-foundations/blob/52701c2b1f5108060810e9c6f6b41311b88343b7/notes/robot_learning_mdp.md) — on main; sourced from a separate historical branch |
 
 The ROS Week-1 exercise streams synthetic hinge data. The separate ROS arm lab
 bridges actual MuJoCo state and commands. ROS is outside the ManiSkill training
@@ -84,7 +83,7 @@ python3 -m venv .venv
 .venv/bin/python -m pytest                      # main's math/MuJoCo contracts
 ```
 
-For the complete implemented labs, use the [pinned snapshot setup](docs/CURRENT_STATE.md#inspect-or-reproduce-the-research-snapshot).
+For the complete labs and reproducible historical experiments, see the [setup guide](docs/CURRENT_STATE.md#inspect-or-reproduce-the-research-snapshot).
 ManiSkill has a **separate Python 3.11 environment**. ROS Jazzy runs in
 **Ubuntu 24.04 through Docker**, using its own Python. Keep their dependencies
 separate from the foundations environment.

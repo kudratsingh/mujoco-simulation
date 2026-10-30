@@ -5,7 +5,9 @@ uses Ubuntu's Python inside the container; the root `.venv` is for MuJoCo.
 
 The exercise publishes a synthetic hinge angle and angular velocity, displays
 them in another node, resets the motion with a service, and records/replays the
-topic. There is no MuJoCo connection yet.
+topic. This Week-1 exercise uses synthetic data. The separate
+[ROS arm systems lab](ARM_README.md) connects the Week-2 MuJoCo arm to independent
+ROS simulator/controller processes and a browser dashboard.
 
 ## Start and build
 

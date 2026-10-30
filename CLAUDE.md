@@ -1,8 +1,8 @@
 # physical-ai-foundations
 
 Physical-AI foundations and a public report hub spanning control, ROS systems,
-and manipulation-learning investigations. Main contains Week-1 foundations plus
-public documentation; later implementations remain in open feature PRs. See
+and manipulation-learning investigations. Main contains the foundations, arm/ROS labs, learning experiments and public
+documentation. Historical experiment snapshots remain pinned for reproducibility. See
 `docs/CURRENT_STATE.md` before describing integration or research status.
 
 ## Layout
@@ -36,7 +36,7 @@ public documentation; later implementations remain in open feature PRs. See
 - No secrets. `.venv/` and CSV logs are git-ignored.
 
 ## Public status conventions
-- Main and the implemented research snapshot are different trees; do not imply the feature stack is merged.
+- Main includes the integrated research stack; distinguish current code from the original pinned evidence snapshot.
 - Preserve archived protocols, results and caveats. Public summaries distinguish final success from validation-selected checkpoints and separate test reset lists.
 - `docs/project.json` pins report provenance. Verify the live deployment when changing public-facing docs.
 - Passing CI certifies contracts, not manipulation reliability or oral competency.
