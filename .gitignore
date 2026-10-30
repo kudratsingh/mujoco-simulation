@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .DS_Store
 mujoco/logs/*.csv
+.worktrees/
+.pytest_cache/
+_site/
+.public-source/
