@@ -1,0 +1,94 @@
+{
+  "repository": "kudratsingh/physical-ai-foundations",
+  "updated": "2026-10-29",
+  "last_experiment": "2026-10-23",
+  "source_commit": "4d2dbdaa09e48a74a05857e38212fdc0685360d9",
+  "main_before_docs": "346f39059edd2019b3d13f41bc861eeae634b36b",
+  "integration_status": "Foundations, arm and ROS labs, and learning experiments are integrated on main; published reports retain the original pinned research snapshot.",
+  "reports": [
+    {
+      "slug": "retention-strength",
+      "directory": "retention_strength",
+      "title": "Fixed teacher-loss strength",
+      "summary": "\u03bb25 helps the targeted seed but sacrifices other gains.",
+      "pr": 19
+    },
+    {
+      "slug": "teacher-retention",
+      "directory": "actor_retention",
+      "title": "Teacher-anchored PPO",
+      "summary": "A frozen-teacher loss improves final performance across three paired training seeds.",
+      "pr": 18
+    },
+    {
+      "slug": "critic-stability",
+      "directory": "critic_bound",
+      "title": "Critic stability",
+      "summary": "Bounded values improve numerical behavior; historical reset-stream caveat applies.",
+      "pr": 17
+    },
+    {
+      "slug": "bc-initialized-ppo",
+      "directory": "bc_ppo_paired",
+      "title": "BC-initialized PPO",
+      "summary": "Early learned gains can disappear during continued optimization.",
+      "pr": 16
+    },
+    {
+      "slug": "placement",
+      "directory": "pickcube_placement",
+      "title": "Placement diagnostics",
+      "summary": "Observation-only stopping and BC/PPO trajectory comparisons.",
+      "pr": 16
+    },
+    {
+      "slug": "bounded-actions",
+      "directory": "pickcube_bounded",
+      "title": "Bounded-action PPO",
+      "summary": "Changing the action distribution alone did not solve placement.",
+      "pr": 15
+    },
+    {
+      "slug": "stopping",
+      "directory": "pickcube_stopping",
+      "title": "Stopping intervention",
+      "summary": "Privileged diagnostic recoveries are separate from autonomous success.",
+      "pr": 15
+    },
+    {
+      "slug": "normalization",
+      "directory": "pickcube_normalization",
+      "title": "Observation normalization",
+      "summary": "Input scaling alone did not resolve the original PPO failures.",
+      "pr": 14
+    },
+    {
+      "slug": "ppo-debug",
+      "directory": "ppo_debug",
+      "title": "Continuation and observation faults",
+      "summary": "Keep optimization failures distinct from deliberately corrupted observations.",
+      "pr": 12
+    },
+    {
+      "slug": "pickcube-baselines",
+      "directory": "stage1_pickcube",
+      "title": "PickCube baselines",
+      "summary": "Demonstrations help; grasping and lifting alone do not pass.",
+      "pr": 11
+    },
+    {
+      "slug": "pushcube-bc",
+      "directory": "week4_bc",
+      "title": "PushCube behavior cloning",
+      "summary": "32/256 demonstrations compared with the same PPO policy on fresh resets.",
+      "pr": 10
+    },
+    {
+      "slug": "pushcube-ppo",
+      "directory": "first_run",
+      "title": "First PushCube PPO run",
+      "summary": "Report temporary and final success separately.",
+      "pr": 9
+    }
+  ]
+}
