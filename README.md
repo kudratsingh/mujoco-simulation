@@ -1,112 +1,119 @@
-# physical-ai-foundations
+# Physical AI Foundations
 
-[![tests](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/tests.yml/badge.svg)](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/tests.yml)
+[![Main tests](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/tests.yml)
+[![Public documentation](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/kudratsingh/physical-ai-foundations/actions/workflows/pages.yml)
 
-Stage 0 of my Physical AI roadmap: build the physical-world mental model that
-robot learning, VLAs and hardware all assume. Week 1 covers configuration
-space, coordinate frames and SE(3), a closed-loop MuJoCo simulation, and ROS 2
-basics. Everything here is meant to be small, reproducible and explainable
-without notes.
+Reproducible robotics labs and measured manipulation-learning experiments:
+**MuJoCo, ROS 2, ManiSkill, behavior cloning, and PPO policy retention**.
+The project connects physical models and feedback control to learning systems
+that must place an object and remain successful through a complete rollout.
 
-## Week 2 in progress
+**[Explore the public reports →](https://kudratsingh.github.io/physical-ai-foundations/)** ·
+[Current state](docs/CURRENT_STATE.md) · [Experiment ledger](docs/EXPERIMENTS.md) ·
+[Reproduce the latest study](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/learning/maniskill/STRENGTH_README.md)
 
-The first artifact is a two-link planar arm: tested forward and inverse kinematics and an
-interactive browser lab. Orbit its 3D schematic or use Plan view, play joint
-sweeps, choose configurations on the joint-angle map, and compare the hand trail
-with its position history. Adjustable link lengths, frame/angle overlays and
-the live transform chain connect the geometry to the Week-1 concepts.
+![Project map: foundations, arm and ROS systems, manipulation learning, precision retention](docs/assets/project-map.svg)
 
-```bash
-.venv/bin/python math/arm_viewer.py       # opens a browser; Ctrl+C stops the server
-.venv/bin/python math/planar_arm.py       # worked 30-degree / 60-degree example
-```
+## Current state
 
-See [the arm walkthrough](notes/planar_arm.md) for the derivation, presets and
-validation. Choose **Hand target · IK** to click a target, compare both elbow
-solutions and explore reach limits. See [the IK walkthrough](notes/inverse_kinematics.md).
-The **Jacobian velocity lab** maps joint speeds to hand velocity, draws the
-manipulability ellipse, and shows rank loss at straight/folded configurations.
-See [the Jacobian walkthrough](notes/jacobian.md). **Track target** closes the
-loop with a damped-least-squares velocity controller, error chart and singularity
-experiments. See [the control walkthrough](notes/resolved_rate_control.md).
-**MuJoCo physics** extends this loop through joint PD and torque-limited motors,
-with gravity, kick recovery and torque/tracking plots. See [the physics walkthrough](notes/arm_physics.md).
-Use the Mac venv for this viewer.
+Documentation refreshed **October 29, 2026**; latest measurements **October 23**.
+**Main contains the Week-1 foundations and this documentation hub.** The arm lab,
+ROS integration, and learning experiments are implemented in open feature PRs,
+through [PR #19](https://github.com/kudratsingh/physical-ai-foundations/pull/19).
+Publishing their reports does not merge their implementations.
 
-## Week 1 tracks
+The public hub serves 12 unchanged visual reports from the pinned research
+snapshot [`4d2dbda`](https://github.com/kudratsingh/physical-ai-foundations/tree/4d2dbdaa09e48a74a05857e38212fdc0685360d9).
+It includes native simulator videos, failure trajectories, protocols and evidence.
+See [integration status and scope](docs/CURRENT_STATE.md) for the distinction
+between implemented artifacts, merged code and unverified competency gates.
 
-| day | track | artifact | status |
-|---|---|---|---|
-| Mon | configuration space | `notes/configuration_space.md` | done |
-| Tue–Wed | frames, SO(3), SE(3) | `math/transforms.py`, `tests/test_transforms.py`, `notes/frames_se3.md` | done |
-| Thu | first MuJoCo physics loop | `mujoco/one_joint.xml`, `mujoco/simulate.py`, [`mujoco/README.md`](mujoco/README.md) | done |
-| Fri | PD controller | `mujoco/pd_control.py`, [`mujoco/PD_NOTES.md`](mujoco/PD_NOTES.md) + plot | done |
-| Sat | ROS 2 graph | `ros2_ws/src/stage0_basics/` | todo |
-| Sun | system map + oral gate | `architecture/week1_system_map.md` | done |
+## Latest finding: stronger anchoring is a tradeoff
 
-## Setup (MuJoCo track, macOS or Linux)
+BC-initialized PPO can improve autonomous PickCube manipulation, but continued
+optimization can destroy placement and holding behavior. A frozen-teacher action
+loss substantially reduced that regression. The latest experiment tested whether
+increasing its coefficient from **λ10 to λ25** preserves more of the gains.
+
+| Training seed | λ10 final successes | λ25 final successes | Change |
+|---|---:|---:|---:|
+| 42 | 40/50 | 36/50 | −4 |
+| 1042 | 40/50 | 37/50 | −3 |
+| 2042, predeclared target | 32/50 | 37/50 | +5 |
+
+The unchanged BC teacher scored **31/50 on these fresh test resets**. Each learner
+received 262,144 transitions, with the original task, controller, reward and
+50-step horizon fixed. **λ25 failed the predeclared criterion:** it helped the
+targeted seed but sacrificed too much performance in the other two. Keep λ10 as
+the reference. A placement-aware constraint is the proposed next experiment;
+it has not been implemented or evaluated.
+
+These are three seed-level comparisons on a shared list of 50 resets, not 150
+independent trials or a general reliability claim. Primary fixed-budget finals
+are separate from validation-selected checkpoints. The previous teacher-retention
+study used different test resets and a teacher score of 26/50; those percentages
+must not be compared as a change in the teacher.
+
+[Latest visual report](https://kudratsingh.github.io/physical-ai-foundations/reports/retention-strength/) ·
+[Full results and limits](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/learning/maniskill/STRENGTH_RESULTS.md) ·
+[Predeclared protocol](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/learning/maniskill/STRENGTH_PROTOCOL.md)
+
+## Explore the project
+
+| Track | Implemented artifacts | Where to start |
+|---|---|---|
+| Physical foundations | Configuration space, frames/SO(3)/SE(3), transforms, pendulum simulation, PD gains and kick recovery | [MuJoCo walkthrough](mujoco/README.md), [frame notes](notes/frames_se3.md) — on main |
+| Arm control | Two-link FK/IK, Jacobian, damped least squares, workspace/singularity explorer, torque-limited MuJoCo physics | [Arm lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/notes/planar_arm.md) — feature snapshot |
+| ROS systems | Jazzy pub/sub, reset service, exact bag replay; separate MuJoCo arm simulator/controller and browser dashboard | [ROS basics](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/README.md), [arm systems lab](https://github.com/kudratsingh/physical-ai-foundations/blob/4d2dbdaa09e48a74a05857e38212fdc0685360d9/ros2_ws/ARM_README.md) — feature snapshot |
+| Robot learning | PushCube/PickCube PPO and BC, observation/optimization diagnostics, critic stability, teacher anchoring and strength ablations | [Visual report hub](https://kudratsingh.github.io/physical-ai-foundations/), [experiment ledger](docs/EXPERIMENTS.md) — feature snapshot |
+| Learning theory | MDPs, PPO/GAE and executable advantage examples | [Separate PR #13 worksheet](https://github.com/kudratsingh/physical-ai-foundations/blob/52701c2b1f5108060810e9c6f6b41311b88343b7/notes/robot_learning_mdp.md) — not part of the PR #19 snapshot |
+
+The ROS Week-1 exercise streams synthetic hinge data. The separate ROS arm lab
+bridges actual MuJoCo state and commands. ROS is outside the ManiSkill training
+loop. All current learned policies use state observations; rendered video is
+inspection evidence, not vision-policy input.
+
+## Run the foundations on main
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python mujoco/simulate.py              # 3 logged rollouts
-.venv/bin/python mujoco/simulate.py --render     # screenshot, GIF, plot
-.venv/bin/python mujoco/pd_control.py           # PD gain comparison + plot
-.venv/bin/mjpython mujoco/simulate.py --viewer   # interactive (macOS needs mjpython)
-.venv/bin/python tests/test_transforms.py        # transforms tests, no pytest needed
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/python mujoco/simulate.py              # three logged rollouts
+.venv/bin/python mujoco/pd_control.py            # gains, plots and metrics
+.venv/bin/mjpython mujoco/simulate.py --viewer   # macOS interactive viewer
+.venv/bin/python -m pytest                      # main's math/MuJoCo contracts
 ```
 
-ROS 2 work runs in Ubuntu 24.04 (Jazzy), not in this venv.
+For the complete implemented labs, use the [pinned snapshot setup](docs/CURRENT_STATE.md#inspect-or-reproduce-the-research-snapshot).
+ManiSkill has a **separate Python 3.11 environment**. ROS Jazzy runs in
+**Ubuntu 24.04 through Docker**, using its own Python. Keep their dependencies
+separate from the foundations environment.
 
-## Tests
+## Related project: SO-101 VLA and RL
 
-```bash
-.venv/bin/pip install -r requirements-dev.txt    # pytest
-.venv/bin/python -m pytest                       # headless math, MuJoCo and viewer tests
-node --test tests/js/*.mjs                       # motion helpers (Node 22+)
-.venv/bin/python -m pytest -m "not slow"         # skip anything marked slow
-```
+A separate, private SO-101 project applies these foundations to simulated
+demonstrations, vision-language-action fine-tuning, RL and planned real-robot
+evaluation. Its current results and task definitions are separate from the
+Panda PickCube studies. [Explore the SO-101 project](https://kudratsingh.github.io/physical-ai-foundations/so101.html).
 
-What `tests/` covers (no GUI or OpenGL; CSV logs go to a temp dir):
+## What verification means
 
-- `test_transforms.py` - rotations and SE(3) transforms: orthonormality,
-  inverses, composition, the worked world/base/camera example.
-- `test_planar_arm.py` - 2R forward kinematics, workspace bounds, transform chain,
-  and independent agreement with the MuJoCo two-link model.
-- `test_arm_dynamics.py` - real MuJoCo stepping, holding and kick recovery,
-  applied torque limits, gravity compensation, geometry and state isolation.
-- `test_resolved_rate.py` - closed-loop convergence, damping vs pseudoinverse,
-  rate limits, singular stalls, unreachable targets and preview consistency.
-- `test_jacobian.py` - analytic derivatives vs finite differences and MuJoCo,
-  determinant, singular values, rank loss and local velocity prediction.
-- `test_inverse_kinematics.py` and `test_ik_api.py` - both elbow solutions, reach
-  boundaries, singular families, FK round trips, MuJoCo comparisons and IK HTTP validation.
-- `test_arm_viewer.py` - the browser viewer's localhost HTTP interface and
-  adjustable geometry and input validation; no graphical browser is needed in CI.
-- `tests/js/test_arm_motion.mjs` - prescribed motion boundaries, fixed-joint
-  sweeps, angle wrapping, configuration-space trace seams, target picking and IK branch selection.
-- `test_model.py` - `one_joint.xml`: 1 DoF hinge, 2 ms timestep, motor with
-  gear 1 and ctrlrange ±50 N·m, joint damping 0.05, gravity on.
-- `test_simulate.py` - `reset()` initial state, a free swing stays bounded
-  and loses energy, rest at the bottom stays at rest, the three rollouts end
-  at different angles.
-- `test_pd_control.py` - tuned gains (Kp=500, Kd=40) settle within 5% before
-  0.5 s and recover from the kick within 0.5 s; Kd=0 overshoots >30%; low Kp
-  sags >0.2 rad; applied torque is clamped to ±50 N·m.
+PR #19 passed four CI checks: core tests, ManiSkill, ROS 2, and ROS arm. Its local
+validation recorded **314 core tests and 186 learning/evidence tests**, including
+independent reconstruction of physical outcomes, selection and paired reset IDs.
+Those counts describe that research snapshot; the main badge above covers the
+smaller suite actually on main. CI checks contracts and smoke runs, not an
+independent repeat of all six full training experiments.
 
-GitHub Actions (`.github/workflows/tests.yml`) runs the suite plus headless
-smoke runs of `simulate.py` and `pd_control.py` on Python 3.12 for every push
-and pull request to `main`.
+The latest report includes 650 episode outcomes, 32,500 passive state/action
+records, all 59 successful-then-displaced final trajectories, and 14 native
+videos. Full policy checkpoints and demonstration datasets remain ignored local
+artifacts; their availability is a reproduction requirement, not a download
+provided by this repository.
 
-## Week-1 gate
+Reliable retention across seeds, long-budget stability, different teachers,
+vision, hardware and sim-to-real transfer remain open. Written notes and built
+artifacts do not independently certify oral competency gates.
 
-Move to Week 2 only when, without notes, I can:
-
-- compose and invert transforms and explain a frame change
-- trace qpos/qvel -> controller -> ctrl -> physics, and explain good vs bad PD gains
-- inspect a ROS 2 graph and explain topic vs service vs action
-- point to where perception, policy, controller, ROS and physics each live
-
-## Not this week
-
-No RL, Isaac Lab, VLAs, MoveIt or hardware.
+[Publishing and maintenance](docs/PUBLISHING.md) ·
+[Public report checksums](https://kudratsingh.github.io/physical-ai-foundations/provenance.json)
