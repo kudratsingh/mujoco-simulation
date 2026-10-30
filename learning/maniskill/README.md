@@ -9,14 +9,15 @@ PPO baseline or its published performance. ROS stays outside training.
 
 ## Setup
 
-Use the Week-3 feature checkout. Until merged, from the original repo:
+The learning code is on `main`. Use a separate worktree and Python 3.11 environment
+so its dependencies stay separate from the root MuJoCo environment and ROS container:
 
 ```bash
-cd .worktrees/week3-maniskill
+git worktree add --detach ../physical-ai-learning HEAD
+cd ../physical-ai-learning
 ```
 
-This checkout has its own Python 3.11 environment; the root MuJoCo/ROS dependency
-environments remain separate.
+Run the following commands from that learning worktree.
 
 ```bash
 uv venv --python 3.11 .venv

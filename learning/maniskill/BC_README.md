@@ -11,14 +11,8 @@ commands, 50-step horizon, CPU physics, reward and success definition.
 
 ## Prepare demonstrations
 
-Use this feature checkout and the Week-3 Python 3.11 dependencies. Until merged:
-
-```bash
-cd .worktrees/week4-behavior-cloning
-```
-
-This local worktree reuses the existing Week-3 `.venv` and rendering runtime.
-For a fresh checkout, follow [the Week-3 setup](README.md) to create them.
+The learning code is on `main`. Use the separate Python 3.11 learning worktree
+and rendering runtime described in [the learning setup](README.md#setup).
 
 ```bash
 .venv/bin/python -m learning.maniskill.prepare_bc --count 512
