@@ -10,3 +10,6 @@ ros2_ws/bags/
 ros2_ws/evidence/
 *.egg-info/
 .pytest_cache/
+.worktrees/
+_site/
+.public-source/
