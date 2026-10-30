@@ -4,7 +4,7 @@
   "last_experiment": "2026-10-23",
   "source_commit": "4d2dbdaa09e48a74a05857e38212fdc0685360d9",
   "main_before_docs": "346f39059edd2019b3d13f41bc861eeae634b36b",
-  "integration_status": "Research implementations remain in open PRs; publishing reports does not merge those implementations.",
+  "integration_status": "Foundations, arm and ROS labs, and learning experiments are integrated on main; published reports retain the original pinned research snapshot.",
   "reports": [
     {
       "slug": "retention-strength",

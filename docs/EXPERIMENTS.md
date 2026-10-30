@@ -2,9 +2,9 @@
 
 **Publication status: October 29, 2026. Latest recorded experiments: October 23.**
 
-These are measured studies from the open research stack, published from the
-immutable [4d2dbda snapshot][snapshot]. They are not all merged implementations
-on `main`, current upstream benchmark scores, or claims of solved manipulation.
+These are measured studies from the integrated research stack, published from the
+immutable [4d2dbda snapshot][snapshot]. They are not current upstream benchmark
+scores or claims of solved manipulation.
 The [current-state overview][state] separates implementation, integration and
 competency gates. The [report hub][hub] contains twelve native visual reports.
 

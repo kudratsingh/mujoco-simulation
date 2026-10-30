@@ -3,30 +3,27 @@
 **Status reviewed: October 29, 2026. Latest recorded experiments: October 23, 2026.**
 
 The project has progressed from physical-AI foundations to controlled robot-learning
-experiments. Implementation progress and integration status are separate: the
-advanced research remains in **open PRs**, while the implementation baseline on
-`main` is still the Week-1 work at [commit 346f390][main-source]. Publishing these
-documents and reports does not merge those research implementations.
+experiments. The foundations, arm and ROS labs, learning experiments, and theory worksheet are
+integrated on `main`. Original experiment commits and snapshots remain available
+for reproducibility. Their recorded research results and limits are unchanged.
 
 The [public report hub][hub] presents twelve native experiment reports from the
-immutable [PR19 source snapshot 4d2dbda][research-source]. This is a published
-research snapshot, not a claim that every feature is available in a default clone
-of `main`. See the [experiment ledger][ledger] for results and reset partitions.
+immutable [PR19 source snapshot 4d2dbda][research-source]. This is the original research snapshot used for the report hub; the implemented
+labs are also available on `main`. See the [experiment ledger][ledger] for results and reset partitions.
 
 ## Project map
 
 | Track | Implemented artifacts | Integration status as of the review date |
 |---|---|---|
 | Week 1 foundations | Configuration-space/frame notes, NumPy transforms, one-joint MuJoCo simulation, PD comparison, tests and system map | Landed implementation baseline on `main`; owner oral assessment is not certified |
-| ROS basics | Ubuntu/Jazzy container, real publisher/subscriber, reset service/client, graph inspection and bag record/replay | Implemented in open PR5; `main` still has the ROS stub |
-| Two-link arm | FK, both IK branches, Jacobian, singularity analysis, damped resolved-rate control, torque-limited MuJoCo physics and interactive browser lab | Implemented in open PR6 and included in the research snapshot |
-| ROS arm integration | Separate simulator, controller and dashboard processes; freshness checks, delay/watchdog experiments and isolated bag replay | Implemented in open PR8 and included in the research snapshot |
-| PushCube learning | State-based PPO, 32/256-demonstration BC comparison, native videos and reproducible evaluation | Implemented in open PR9–10 and included in the research snapshot |
-| PickCube research | State baselines, fault recovery, normalization/action experiments, placement diagnostics, critic investigation and teacher-retention studies | Implemented in the open PR11–19 stack, with positive and negative measured results |
-| Learning concepts | MDP/POMDP, BC/PPO and GAE worksheet, executable advantage arithmetic and tests | Separate open PR13 at [52701c2][learning-notes]; these files are absent from the PR19 snapshot |
+| ROS basics | Ubuntu/Jazzy container, real publisher/subscriber, reset service/client, graph inspection and bag record/replay | Integrated on `main` (PR5) |
+| Two-link arm | FK, both IK branches, Jacobian, singularity analysis, damped resolved-rate control, torque-limited MuJoCo physics and interactive browser lab | Integrated on `main` (PR6) |
+| ROS arm integration | Separate simulator, controller and dashboard processes; freshness checks, delay/watchdog experiments and isolated bag replay | Integrated on `main` (PR8) |
+| PushCube learning | State-based PPO, 32/256-demonstration BC comparison, native videos and reproducible evaluation | Integrated on `main` (PR9–10) |
+| PickCube research | State baselines, fault recovery, normalization/action experiments, placement diagnostics, critic investigation and teacher-retention studies | Integrated on `main` from PR11–19, with positive and negative measured results |
+| Learning concepts | MDP/POMDP, BC/PPO and GAE worksheet, executable advantage arithmetic and tests | Integrated on `main` from separate PR13 at [52701c2][learning-notes]; absent from the original PR19 snapshot |
 
-The open research set is PR5, PR6 and PR8–19. This status describes implemented
-artifacts awaiting integration, rather than fourteen merged milestones. The
+Original PRs and commit references preserve how the artifacts were developed and reviewed. The
 [arm walkthrough][arm] and [ROS arm guide][ros-arm] explain the non-learning labs.
 
 ## Current research conclusion

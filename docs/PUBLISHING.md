@@ -1,8 +1,7 @@
 # Maintaining the public project view
 
-The landing README, current-state page and experiment ledger describe both the
-code on main and implemented work still in open PRs. Keep those two statuses
-separate. Updating this documentation is not authorization to merge the research
+The landing README, current-state page and experiment ledger describe the code integrated on main and its historical experimental snapshots.
+Keep current integration status and original experiment provenance distinct. Updating this documentation is not authorization to merge the research
 stack, change a scientific protocol, or rerun training.
 
 ## Public report hub
@@ -16,8 +15,8 @@ No simulator or learning dependencies run during publication.
 The build copies 12 existing report directories unchanged and records every
 copied file's SHA-256 in `provenance.json`. Summary counts are read from the
 committed geometry/criterion files. It verifies the source commit and all local
-HTML links. Publishing reports does not integrate the corresponding code into
-main, and the workflow never alters historical evidence.
+HTML links. The workflow never alters historical evidence; publication and code integration
+are independently tracked.
 
 To preview locally, use an exact checkout of the declared research commit:
 
