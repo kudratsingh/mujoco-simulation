@@ -89,6 +89,13 @@ ManiSkill has a **separate Python 3.11 environment**. ROS Jazzy runs in
 **Ubuntu 24.04 through Docker**, using its own Python. Keep their dependencies
 separate from the foundations environment.
 
+## Related project: SO-101 VLA and RL
+
+A separate, private SO-101 project applies these foundations to simulated
+demonstrations, vision-language-action fine-tuning, RL and planned real-robot
+evaluation. Its current results and task definitions are separate from the
+Panda PickCube studies. [Explore the SO-101 project](https://kudratsingh.github.io/physical-ai-foundations/so101.html).
+
 ## What verification means
 
 PR #19 passed four CI checks: core tests, ManiSkill, ROS 2, and ROS arm. Its local

@@ -68,6 +68,7 @@ def build(source, output):
         raise FileExistsError("Use a new output directory; existing sites are preserved")
     output.mkdir(parents=True)
     shutil.copy2(root / "docs/index.html", output / "index.html")
+    shutil.copy2(root / "docs/so101.html", output / "so101.html")
     shutil.copytree(root / "docs/assets", output / "assets")
     (output / ".nojekyll").touch()
     evidence = source / "learning/maniskill/evidence"
